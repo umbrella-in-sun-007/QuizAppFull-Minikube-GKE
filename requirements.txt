@@ -6,6 +6,7 @@ django-tailwind[reload]
 
 # Production server & static files
 uvicorn[standard]
+uvloop  # Better async loop for production
 whitenoise
 
 # Development tools

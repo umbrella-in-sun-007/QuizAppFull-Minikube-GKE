@@ -46,7 +46,8 @@ start_server() {
     print_info "Starting server on $host:$port with $workers workers..."
     cd "$PROJECT_DIR"
     DJANGO_SETTINGS_MODULE=config.settings_production .venv/bin/uvicorn config.asgi:application \
-        --host "$host" --port "$port" --workers "$workers"
+        --host "$host" --port "$port" --workers "$workers" \
+        --access-log --loop uvloop
 }
 
 # Main deployment
