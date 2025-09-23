@@ -1,7 +1,11 @@
 from datetime import datetime, timezone
+from typing import List
 from sqlalchemy import String, DateTime, Boolean, Text, JSON
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .db import Base
+
+# Import RBAC models to register them with Base
+from .rbac_models import Role, Permission, user_roles, role_permissions
 
 class User(Base):
     __tablename__ = "users"
@@ -35,3 +39,29 @@ class User(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+    
+    # RBAC Relationships  
+    roles: Mapped[List["Role"]] = relationship(
+        "Role", 
+        secondary=user_roles, 
+        back_populates="users",
+        primaryjoin="User.id == user_roles.c.user_id",
+        secondaryjoin="Role.id == user_roles.c.role_id",
+        lazy="selectin"
+    )
+    
+    def has_permission(self, resource: str, action: str) -> bool:
+        """Check if user has a specific permission through their roles."""
+        for role in self.roles:
+            if role.has_permission(resource, action):
+                return True
+        return False
+    
+    def has_role(self, role_name: str) -> bool:
+        """Check if user has a specific role."""
+        return any(role.name == role_name for role in self.roles)
+    
+    @property
+    def is_admin(self) -> bool:
+        """Check if user has admin role or admin permissions."""
+        return self.is_superuser or self.has_role("admin") or self.has_permission("admin", "all")

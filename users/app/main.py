@@ -8,6 +8,7 @@ from .db import engine, Base, get_session
 from .routers import users as users_router
 from .routers import auth as auth_router
 from .routers import profile as profile_router
+from .routers import rbac as rbac_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -43,3 +44,4 @@ async def ready():
 app.include_router(auth_router.router)
 app.include_router(users_router.router)
 app.include_router(profile_router.router)
+app.include_router(rbac_router.router)
