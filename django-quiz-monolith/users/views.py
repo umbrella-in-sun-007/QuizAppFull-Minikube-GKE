@@ -8,11 +8,12 @@ from django.contrib.auth.views import LoginView
 from .models import User, UserProfile
 
 try:
-    from .forms import CustomUserCreationForm, UserProfileForm
+    from .forms import CustomUserCreationForm, UserProfileForm, SimplePasswordResetForm
 except ImportError:
     # Fallback if forms are not available yet
     CustomUserCreationForm = None
     UserProfileForm = None
+    SimplePasswordResetForm = None
 
 class CustomLoginView(LoginView):
     """Custom login view that redirects authenticated users"""
@@ -98,3 +99,31 @@ def logout_view(request):
     logout(request)
     messages.success(request, 'You have been successfully logged out.')
     return redirect('frontend:home')
+
+def simple_password_reset(request):
+    """Simple password reset without email verification"""
+    # Note: Allow both authenticated and unauthenticated users to reset password
+        
+    if SimplePasswordResetForm is None:
+        messages.error(request, 'Password reset is temporarily unavailable.')
+        return redirect('users:login')
+    
+    if request.method == 'POST':
+        form = SimplePasswordResetForm(request.POST, user_is_authenticated=request.user.is_authenticated)
+        if form.is_valid():
+            user = form.save()
+            if request.user.is_authenticated:
+                # If user was logged in, log them out and redirect to login
+                logout(request)
+                messages.success(request, 'Password has been changed successfully! Please login with your new password.')
+            else:
+                messages.success(request, 'Password has been reset successfully! You can now login with your new password.')
+            return redirect('users:login')
+    else:
+        # Pre-fill username for authenticated users
+        initial_data = {}
+        if request.user.is_authenticated:
+            initial_data['username'] = request.user.username
+        form = SimplePasswordResetForm(initial=initial_data, user_is_authenticated=request.user.is_authenticated)
+    
+    return render(request, 'users/simple_password_reset.html', {'form': form})

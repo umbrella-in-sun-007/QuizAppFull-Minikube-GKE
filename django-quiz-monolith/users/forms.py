@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth import authenticate
 from .models import User, UserProfile
 
 class CustomUserCreationForm(UserCreationForm):
@@ -60,3 +61,87 @@ class UserUpdateForm(forms.ModelForm):
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control'}),
         }
+
+class SimplePasswordResetForm(forms.Form):
+    """Simple password reset form without email verification"""
+    username = forms.CharField(
+        max_length=150,
+        widget=forms.TextInput(attrs={
+            'class': 'w-full px-3 py-2 border border-dark-700 bg-dark-800 text-white focus:outline-none focus:border-primary',
+            'placeholder': 'Enter your username'
+        })
+    )
+    admin_password = forms.CharField(
+        label="Admin password",
+        widget=forms.PasswordInput(attrs={
+            'class': 'w-full px-3 py-2 border border-dark-700 bg-dark-800 text-white focus:outline-none focus:border-primary',
+            'placeholder': 'Enter admin password'
+        }),
+        required=False  # Will be required conditionally
+    )
+    new_password1 = forms.CharField(
+        label="New password",
+        widget=forms.PasswordInput(attrs={
+            'class': 'w-full px-3 py-2 border border-dark-700 bg-dark-800 text-white focus:outline-none focus:border-primary',
+            'placeholder': 'Enter new password'
+        })
+    )
+    new_password2 = forms.CharField(
+        label="Confirm new password",
+        widget=forms.PasswordInput(attrs={
+            'class': 'w-full px-3 py-2 border border-dark-700 bg-dark-800 text-white focus:outline-none focus:border-primary',
+            'placeholder': 'Confirm new password'
+        })
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.user_is_authenticated = kwargs.pop('user_is_authenticated', False)
+        super().__init__(*args, **kwargs)
+        
+        # If user is authenticated, remove admin password field
+        if self.user_is_authenticated:
+            del self.fields['admin_password']
+
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            raise forms.ValidationError("User with this username does not exist.")
+        return username
+
+    def clean_admin_password(self):
+        admin_password = self.cleaned_data.get('admin_password')
+        
+        # Only validate admin password if user is not authenticated
+        if not self.user_is_authenticated:
+            if not admin_password:
+                raise forms.ValidationError("Admin password is required for password reset.")
+            
+            # Check if admin password is correct
+            try:
+                admin_user = User.objects.filter(is_superuser=True).first()
+                if not admin_user or not admin_user.check_password(admin_password):
+                    raise forms.ValidationError("Invalid admin password.")
+            except Exception:
+                raise forms.ValidationError("Admin verification failed.")
+        
+        return admin_password
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password1 = cleaned_data.get('new_password1')
+        password2 = cleaned_data.get('new_password2')
+
+        if password1 and password2 and password1 != password2:
+            raise forms.ValidationError("Passwords don't match.")
+        
+        return cleaned_data
+
+    def save(self):
+        username = self.cleaned_data['username']
+        password = self.cleaned_data['new_password1']
+        user = User.objects.get(username=username)
+        user.set_password(password)
+        user.save()
+        return user

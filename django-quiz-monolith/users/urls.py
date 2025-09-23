@@ -17,7 +17,10 @@ urlpatterns = [
     # API URLs
     path('api/user-info/', views.api_user_info, name='api_user_info'),
     
-    # Password Reset URLs
+    # Simple Password Reset (without email)
+    path('reset-password/', views.simple_password_reset, name='simple_password_reset'),
+    
+    # Password Reset URLs (original email-based)
     path('password-reset/', 
          auth_views.PasswordResetView.as_view(),
          name='password_reset'),
