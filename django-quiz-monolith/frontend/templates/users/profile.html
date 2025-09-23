@@ -85,18 +85,72 @@
                 
                 {% if user.is_student %}
                     <div>
-                        <label for="{{ form.academic_year.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">
-                            Academic Year
+                        <label for="{{ form.degree.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">
+                            Degree Program <span class="text-red-400">*</span>
                         </label>
-                        {{ form.academic_year }}
+                        {{ form.degree }}
+                        {% if form.degree.help_text %}
+                            <p class="mt-1 text-xs text-gray-500">{{ form.degree.help_text }}</p>
+                        {% endif %}
+                        {% if form.degree.errors %}
+                            <p class="mt-1 text-xs text-red-400">{{ form.degree.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.year_of_admission.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">
+                            Year of Admission <span class="text-red-400">*</span>
+                        </label>
+                        {{ form.year_of_admission }}
+                        {% if form.year_of_admission.help_text %}
+                            <p class="mt-1 text-xs text-gray-500">{{ form.year_of_admission.help_text }}</p>
+                        {% endif %}
+                        {% if form.year_of_admission.errors %}
+                            <p class="mt-1 text-xs text-red-400">{{ form.year_of_admission.errors.0 }}</p>
+                        {% endif %}
                     </div>
 
                     <div>
                         <label for="{{ form.student_id.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">
-                            Student ID
+                            Student ID <span class="text-red-400">*</span>
                         </label>
                         {{ form.student_id }}
+                        {% if form.student_id.help_text %}
+                            <p class="mt-1 text-xs text-gray-500">{{ form.student_id.help_text }}</p>
+                        {% endif %}
+                        {% if form.student_id.errors %}
+                            <p class="mt-1 text-xs text-red-400">{{ form.student_id.errors.0 }}</p>
+                        {% endif %}
                     </div>
+
+                    <!-- Show calculated academic info if available -->
+                    {% if user.profile and user.profile.current_semester %}
+                    <div class="p-3 bg-dark-800 rounded border border-dark-700">
+                        <h4 class="text-sm font-medium text-gray-300 mb-2">Calculated Academic Information</h4>
+                        <div class="text-xs text-gray-400 space-y-1">
+                            {% if user.profile.current_semester %}
+                                <p>Current Semester: <span class="text-white">{{ user.profile.current_semester }}</span></p>
+                            {% endif %}
+                            {% if user.profile.year_of_study %}
+                                <p>Year of Study: <span class="text-white">{{ user.profile.year_of_study }}</span></p>
+                            {% endif %}
+                            {% if user.profile.current_academic_year %}
+                                <p>Academic Year: <span class="text-white">{{ user.profile.current_academic_year }}</span></p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Legacy academic year field (optional) -->
+                    {% if form.academic_year %}
+                    <div>
+                        <label for="{{ form.academic_year.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">
+                            Academic Year (Legacy)
+                        </label>
+                        {{ form.academic_year }}
+                        <p class="mt-1 text-xs text-gray-500">This field is optional and for backward compatibility.</p>
+                    </div>
+                    {% endif %}
                 {% elif user.is_teacher %}
                     <div>
                         <label for="{{ form.subject_specialization.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">

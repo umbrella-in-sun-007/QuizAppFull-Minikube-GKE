@@ -4,11 +4,74 @@
 
 {% block content %}
 <div class="space-y-6 w-full">
-    <!-- Welcome Section -->
+    <!-- Welcome Section with Student Info -->
     <div class="bg-gradient-to-r from-primary to-secondary text-white p-6 rounded-lg">
         <h1 class="text-xl md:text-2xl font-bold mb-2">Welcome back, {{ user.first_name|default:user.username }}!</h1>
-        <p class="text-red-100 text-sm md:text-base">Ready to continue your learning journey?</p>
+        <div class="text-red-100 text-sm md:text-base space-y-1">
+            <p>Ready to continue your learning journey?</p>
+            {% if user.profile %}
+                <div class="mt-3 flex flex-wrap gap-4 text-xs md:text-sm">
+                    {% if user.profile.student_id %}
+                        <span class="bg-white/20 px-2 py-1 rounded">Student ID: {{ user.profile.student_id }}</span>
+                    {% endif %}
+                    {% if user.profile.degree %}
+                        <span class="bg-white/20 px-2 py-1 rounded">{{ user.profile.get_degree_display }}</span>
+                    {% endif %}
+                    {% if user.profile.current_semester %}
+                        <span class="bg-white/20 px-2 py-1 rounded">Semester: {{ user.profile.current_semester }}</span>
+                    {% endif %}
+                    {% if user.profile.year_of_study %}
+                        <span class="bg-white/20 px-2 py-1 rounded">Year: {{ user.profile.year_of_study }}</span>
+                    {% endif %}
+                </div>
+                {% if user.profile.current_academic_year %}
+                    <p class="mt-2 text-xs md:text-sm">Academic Year: {{ user.profile.current_academic_year }}</p>
+                {% endif %}
+            {% endif %}
+        </div>
     </div>
+
+    <!-- Academic Info Card -->
+    {% if user.profile %}
+    <div class="bg-dark-900 border border-dark-800 p-4 md:p-6 rounded-lg">
+        <h2 class="text-lg font-semibold text-white mb-4">Academic Information</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {% if user.profile.degree %}
+            <div class="text-center p-3 bg-dark-800 rounded">
+                <p class="text-xs text-gray-400">Degree Program</p>
+                <p class="text-sm font-medium text-white">{{ user.profile.get_degree_display }}</p>
+            </div>
+            {% endif %}
+            
+            {% if user.profile.year_of_admission %}
+            <div class="text-center p-3 bg-dark-800 rounded">
+                <p class="text-xs text-gray-400">Year of Admission</p>
+                <p class="text-sm font-medium text-white">{{ user.profile.year_of_admission }}</p>
+            </div>
+            {% endif %}
+            
+            {% if user.profile.current_semester %}
+            <div class="text-center p-3 bg-dark-800 rounded">
+                <p class="text-xs text-gray-400">Current Semester</p>
+                <p class="text-sm font-medium text-white">{{ user.profile.current_semester }}</p>
+            </div>
+            {% endif %}
+            
+            {% if user.profile.year_of_study %}
+            <div class="text-center p-3 bg-dark-800 rounded">
+                <p class="text-xs text-gray-400">Year of Study</p>
+                <p class="text-sm font-medium text-white">{{ user.profile.year_of_study }}</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        {% if not user.profile.degree or not user.profile.year_of_admission or not user.profile.student_id %}
+        <div class="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded text-yellow-400 text-sm">
+            <p>⚠️ Your profile is incomplete. Please <a href="{% url 'users:profile' %}" class="underline font-medium">update your profile</a> to add missing information.</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
 
     <!-- Quick Stats -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
