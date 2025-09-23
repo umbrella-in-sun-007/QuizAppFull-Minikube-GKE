@@ -127,17 +127,6 @@
                         </div>
                     </div>
                     {% endif %}
-
-                    <!-- Legacy academic year field (optional) -->
-                    {% if form.academic_year %}
-                    <div>
-                        <label for="{{ form.academic_year.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">
-                            Academic Year (Legacy)
-                        </label>
-                        {{ form.academic_year }}
-                        <p class="mt-1 text-xs text-gray-500">This field is optional and for backward compatibility.</p>
-                    </div>
-                    {% endif %}
                 {% elif user.is_teacher %}
                     <div>
                         <label for="{{ form.subject_specialization.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">

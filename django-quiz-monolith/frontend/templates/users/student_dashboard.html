@@ -4,30 +4,6 @@
 
 {% block content %}
 <div class="space-y-6 w-full">
-    <!-- Welcome Section with Student Info -->
-    <div class="bg-gradient-to-r from-primary to-secondary text-white p-6 rounded-lg">
-        <h1 class="text-xl md:text-2xl font-bold mb-2">Welcome back, {{ user.first_name|default:user.username }}!</h1>
-        <div class="text-red-100 text-sm md:text-base space-y-1">
-            <p>Ready to continue your learning journey?</p>
-            {% if user.profile %}
-                <div class="mt-3 flex flex-wrap gap-4 text-xs md:text-sm">
-                    {% if user.profile.degree %}
-                        <span class="bg-white/20 px-2 py-1 rounded">{{ user.profile.get_degree_display }}</span>
-                    {% endif %}
-                    {% if user.profile.current_semester %}
-                        <span class="bg-white/20 px-2 py-1 rounded">Semester: {{ user.profile.current_semester }}</span>
-                    {% endif %}
-                    {% if user.profile.year_of_study %}
-                        <span class="bg-white/20 px-2 py-1 rounded">Year: {{ user.profile.year_of_study }}</span>
-                    {% endif %}
-                </div>
-                {% if user.profile.current_academic_year %}
-                    <p class="mt-2 text-xs md:text-sm">Academic Year: {{ user.profile.current_academic_year }}</p>
-                {% endif %}
-            {% endif %}
-        </div>
-    </div>
-
     <!-- Academic Info Card -->
     {% if user.profile %}
     <div class="bg-dark-900 border border-dark-800 p-4 md:p-6 rounded-lg">
