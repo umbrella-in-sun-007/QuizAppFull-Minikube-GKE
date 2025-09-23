@@ -1,17 +1,23 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import authenticate
-from .models import User, UserProfile
+from .models import User, UserProfile, Institute
 
 class CustomUserCreationForm(UserCreationForm):
     email = forms.EmailField(required=True)
     first_name = forms.CharField(max_length=30, required=True)
     last_name = forms.CharField(max_length=30, required=True)
     role = forms.ChoiceField(choices=User.ROLE_CHOICES, required=True)
+    institute = forms.ModelChoiceField(
+        queryset=Institute.objects.filter(is_active=True),
+        required=True,
+        empty_label="Select an institute",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'first_name', 'last_name', 'role', 'password1', 'password2')
+        fields = ('username', 'email', 'first_name', 'last_name', 'role', 'institute', 'password1', 'password2')
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -19,6 +25,12 @@ class CustomUserCreationForm(UserCreationForm):
         user.first_name = self.cleaned_data['first_name']
         user.last_name = self.cleaned_data['last_name']
         user.role = self.cleaned_data['role']
+        user.institute = self.cleaned_data['institute']
+        
+        # Set teachers as inactive by default - requires admin approval
+        if user.role == 'teacher':
+            user.is_active = False
+        
         if commit:
             user.save()
         return user
@@ -26,12 +38,10 @@ class CustomUserCreationForm(UserCreationForm):
 class UserProfileForm(forms.ModelForm):
     class Meta:
         model = UserProfile
-        fields = ['academic_year', 'subject_specialization', 'institution', 
-                 'experience_years', 'student_id']
+        fields = ['academic_year', 'subject_specialization', 'experience_years', 'student_id']
         widgets = {
             'academic_year': forms.TextInput(attrs={'class': 'form-control'}),
             'subject_specialization': forms.TextInput(attrs={'class': 'form-control'}),
-            'institution': forms.TextInput(attrs={'class': 'form-control'}),
             'experience_years': forms.NumberInput(attrs={'class': 'form-control'}),
             'student_id': forms.TextInput(attrs={'class': 'form-control'}),
         }
@@ -61,6 +71,18 @@ class UserUpdateForm(forms.ModelForm):
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control'}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Add a readonly display of the institute
+        if self.instance and self.instance.institute:
+            self.fields['institute_display'] = forms.CharField(
+                label="Institute",
+                initial=self.instance.institute.name,
+                widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
+                required=False,
+                help_text="Institute cannot be changed after registration."
+            )
 
 class SimplePasswordResetForm(forms.Form):
     """Simple password reset form without email verification"""

@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.views import LoginView
+from django.core.exceptions import PermissionDenied
 from .models import User, UserProfile
 
 try:
@@ -16,13 +17,45 @@ except ImportError:
     SimplePasswordResetForm = None
 
 class CustomLoginView(LoginView):
-    """Custom login view that redirects authenticated users"""
+    """Custom login view that redirects authenticated users and handles teacher approval"""
     
     def dispatch(self, request, *args, **kwargs):
         # Redirect authenticated users to dashboard
         if request.user.is_authenticated:
             return redirect('users:dashboard')
         return super().dispatch(request, *args, **kwargs)
+    
+    def form_valid(self, form):
+        """Handle successful form validation with teacher approval checks"""
+        try:
+            return super().form_valid(form)
+        except PermissionDenied as e:
+            if "Teacher account pending approval" in str(e):
+                messages.error(
+                    self.request, 
+                    'Your teacher account is pending admin approval. Please contact the administrator to activate your account.'
+                )
+                return self.form_invalid(form)
+            raise
+    
+    def form_invalid(self, form):
+        """Handle invalid form submission with custom teacher messaging"""
+        username = form.cleaned_data.get('username')
+        
+        if username:
+            try:
+                user = User.objects.get(username=username)
+                if user.role == 'teacher' and not user.is_active:
+                    messages.error(
+                        self.request,
+                        'Your teacher account is pending admin approval. Please contact the administrator to activate your account.'
+                    )
+                    # Clear the form errors to show only our custom message
+                    form.errors.clear()
+            except User.DoesNotExist:
+                pass
+        
+        return super().form_invalid(form)
 
 def register(request):
     """User registration view"""
@@ -41,7 +74,12 @@ def register(request):
             # Create user profile
             UserProfile.objects.create(user=user)
             username = form.cleaned_data.get('username')
-            messages.success(request, f'Account created for {username}!')
+            
+            if user.role == 'teacher':
+                messages.info(request, f'Teacher account created for {username}! Your account is pending admin approval. You will be able to login once an administrator activates your account.')
+            else:
+                messages.success(request, f'Account created for {username}!')
+            
             return redirect('users:login')
     else:
         form = CustomUserCreationForm()
