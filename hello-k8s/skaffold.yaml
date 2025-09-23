@@ -1,0 +1,22 @@
+apiVersion: skaffold/v4beta6
+kind: Config
+metadata:
+  name: hello-k8s
+build:
+  artifacts:
+    - image: hello-service
+      context: services/hello
+    - image: world-service
+      context: services/world
+    - image: gateway-service
+      context: gateway
+  local:
+    push: false   # don't push to remote registry; use local images
+manifests:
+  rawYaml:
+    - k8s/hello-deployment.yaml
+    - k8s/world-deployment.yaml
+    - k8s/gateway-deployment.yaml
+    - k8s/hello-configmap.yaml
+deploy:
+  kubectl: {}
