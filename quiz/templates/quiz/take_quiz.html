@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="timer" id="timer">Time: <span id="timeLeft">{{ quiz.duration_minutes }}:00</span></div>
+
+<div class="container">
+    <div class="card">
+        <h1>{{ quiz.title }}</h1>
+        <p>Total Questions: {{ questions|length }} | Total Marks: {{ quiz.get_total_marks }}</p>
+    </div>
+    
+    <form method="post" id="quizForm">
+        {% csrf_token %}
+        
+        {% for question in questions %}
+        <div class="question-block">
+            <h3>Question {{ forloop.counter }} 
+                {% if question.is_required %}<span style="color: red;">*</span>{% endif %}
+                <span style="float: right; color: #666;">({{ question.marks }} marks)</span>
+            </h3>
+            
+            <div class="question-text">
+                {{ question.question_text|safe }}
+            </div>
+            
+            {% if question.question_type == 'single' or question.question_type == 'true_false' %}
+                {% for option in question.options.all %}
+                <div>
+                    <input type="radio" name="question_{{ question.id }}" 
+                           id="opt_{{ option.id }}" value="{{ option.id }}"
+                           {% if question.is_required %}required{% endif %}>
+                    <label for="opt_{{ option.id }}">{{ option.option_text }}</label>
+                </div>
+                {% endfor %}
+            
+            {% elif question.question_type == 'multiple' %}
+                <p><em>Select all that apply:</em></p>
+                {% for option in question.options.all %}
+                <div>
+                    <input type="checkbox" name="question_{{ question.id }}" 
+                           id="opt_{{ option.id }}" value="{{ option.id }}">
+                    <label for="opt_{{ option.id }}">{{ option.option_text }}</label>
+                </div>
+                {% endfor %}
+            
+            {% elif question.question_type == 'short_answer' %}
+                <textarea name="question_{{ question.id }}" rows="4" style="width: 100%;"
+                          {% if question.is_required %}required{% endif %}></textarea>
+            {% endif %}
+        </div>
+        {% endfor %}
+        
+        <button type="submit" class="btn btn-success" onclick="return confirm('Submit quiz?');">
+            Submit Quiz
+        </button>
+    </form>
+</div>
+
+<script>
+let timeLeft = {{ quiz.duration_minutes }} * 60;
+const timerEl = document.getElementById('timeLeft');
+
+function updateTimer() {
+    const mins = Math.floor(timeLeft / 60);
+    const secs = timeLeft % 60;
+    timerEl.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+    
+    if (timeLeft <= 60) {
+        document.getElementById('timer').classList.add('warning');
+    }
+    
+    if (timeLeft <= 0) {
+        alert('Time up!');
+        document.getElementById('quizForm').submit();
+    }
+    
+    timeLeft--;
+}
+
+setInterval(updateTimer, 1000);
+updateTimer();
+
+// Fullscreen functionality
+function enterFullscreen() {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+        elem.requestFullscreen();
+    } else if (elem.webkitRequestFullscreen) { /* Safari */
+        elem.webkitRequestFullscreen();
+    } else if (elem.msRequestFullscreen) { /* IE11 */
+        elem.msRequestFullscreen();
+    }
+}
+
+// Request fullscreen on page load
+window.addEventListener('load', function() {
+    enterFullscreen();
+});
+
+// Monitor fullscreen changes
+document.addEventListener('fullscreenchange', function() {
+    if (!document.fullscreenElement) {
+        alert('⚠️ Warning: You have exited fullscreen mode. Please return to fullscreen to continue the quiz.');
+        enterFullscreen();
+    }
+});
+
+document.addEventListener('webkitfullscreenchange', function() {
+    if (!document.webkitFullscreenElement) {
+        alert('⚠️ Warning: You have exited fullscreen mode. Please return to fullscreen to continue the quiz.');
+        enterFullscreen();
+    }
+});
+
+// Monitor focus changes
+let focusWarningCount = 0;
+window.addEventListener('blur', function() {
+    focusWarningCount++;
+    alert('⚠️ Warning #' + focusWarningCount + ': You switched away from the quiz window. Please stay focused on the quiz!');
+});
+
+// Monitor visibility changes (tab switching)
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        focusWarningCount++;
+        alert('⚠️ Warning #' + focusWarningCount + ': You switched to another tab. Please stay on the quiz tab!');
+    }
+});
+</script>
+{% endblock %}
