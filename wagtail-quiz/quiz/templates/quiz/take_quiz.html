@@ -6,6 +6,11 @@
 <div class="nav">
     <a href="{% url 'quiz_list' %}">Quizzes</a>
     <span style="float: right;">{{ quiz.title }}</span>
+    {% if user.is_authenticated %}
+        {% if user.is_staff %}
+        <a href="/admin/" style="float: right; margin-right: 20px;">Admin</a>
+        {% endif %}
+    {% endif %}
 </div>
 
 <div class="container">
