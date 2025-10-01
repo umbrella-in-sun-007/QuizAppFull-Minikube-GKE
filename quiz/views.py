@@ -174,6 +174,19 @@ def take_quiz(request, attempt_id):
         return redirect('quiz_result', attempt_id=attempt_id)
     
     quiz = attempt.quiz
+    
+    # Check if time has expired (backend validation)
+    time_elapsed = (timezone.now() - attempt.start_time).total_seconds()
+    time_limit = quiz.duration_minutes * 60
+    time_remaining = time_limit - time_elapsed
+    
+    if time_remaining <= 0:
+        # Time expired - auto-submit the quiz
+        messages.warning(request, 'Time expired! Your quiz has been auto-submitted.')
+        # Process any answers that were saved
+        attempt.calculate_score()
+        return redirect('quiz_result', attempt_id=attempt_id)
+    
     questions = list(quiz.questions.all())
     
     # Randomize questions if enabled
@@ -181,6 +194,14 @@ def take_quiz(request, attempt_id):
         random.shuffle(questions)
     
     if request.method == 'POST':
+        # Check time again before processing submission
+        time_elapsed = (timezone.now() - attempt.start_time).total_seconds()
+        time_remaining = time_limit - time_elapsed
+        
+        if time_remaining <= 0:
+            messages.warning(request, 'Time expired! Your quiz has been auto-submitted.')
+            attempt.calculate_score()
+            return redirect('quiz_result', attempt_id=attempt_id)
         # Process quiz submission
         for question in questions:
             # Get selected answers
@@ -215,12 +236,100 @@ def take_quiz(request, attempt_id):
         messages.success(request, f'Quiz submitted! You scored {result["percentage"]:.1f}%')
         return redirect('quiz_result', attempt_id=attempt_id)
     
+    # Calculate time remaining to pass to template
     context = {
         'attempt': attempt,
         'quiz': quiz,
-        'questions': questions
+        'questions': questions,
+        'time_remaining_seconds': int(time_remaining),
     }
     return render(request, 'quiz/take_quiz.html', context)
+
+
+@login_required
+def check_quiz_time(request, attempt_id):
+    """API endpoint to check remaining time for a quiz attempt"""
+    attempt = get_object_or_404(QuizAttempt, id=attempt_id, student=request.user)
+    
+    if attempt.is_completed:
+        return JsonResponse({
+            'time_remaining': 0,
+            'expired': True,
+            'completed': True
+        })
+    
+    quiz = attempt.quiz
+    time_elapsed = (timezone.now() - attempt.start_time).total_seconds()
+    time_limit = quiz.duration_minutes * 60
+    time_remaining = max(0, time_limit - time_elapsed)
+    
+    # Auto-submit if time expired
+    if time_remaining <= 0:
+        attempt.calculate_score()
+    
+    return JsonResponse({
+        'time_remaining': int(time_remaining),
+        'expired': time_remaining <= 0,
+        'completed': attempt.is_completed
+    })
+
+
+@login_required
+def save_quiz_progress(request, attempt_id):
+    """API endpoint to save quiz progress (AJAX)"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=405)
+    
+    attempt = get_object_or_404(QuizAttempt, id=attempt_id, student=request.user)
+    
+    if attempt.is_completed:
+        return JsonResponse({'error': 'Quiz already completed'}, status=400)
+    
+    # Check time
+    quiz = attempt.quiz
+    time_elapsed = (timezone.now() - attempt.start_time).total_seconds()
+    time_limit = quiz.duration_minutes * 60
+    
+    if time_elapsed >= time_limit:
+        return JsonResponse({'error': 'Time expired', 'expired': True}, status=400)
+    
+    # Save the current answer
+    question_id = request.POST.get('question_id')
+    if not question_id:
+        return JsonResponse({'error': 'Question ID required'}, status=400)
+    
+    try:
+        question = Question.objects.get(id=question_id, quiz=quiz)
+    except Question.DoesNotExist:
+        return JsonResponse({'error': 'Invalid question'}, status=400)
+    
+    # Save answer
+    if question.question_type == 'short_answer':
+        text_answer = request.POST.get('text_answer', '')
+        answer, created = StudentAnswer.objects.get_or_create(
+            attempt=attempt,
+            question=question
+        )
+        answer.text_answer = text_answer
+        answer.save()
+    else:
+        selected_option_ids = request.POST.getlist('option_ids')
+        answer, created = StudentAnswer.objects.get_or_create(
+            attempt=attempt,
+            question=question
+        )
+        answer.selected_options.clear()
+        
+        for option_id in selected_option_ids:
+            try:
+                option = AnswerOption.objects.get(id=option_id, question=question)
+                answer.selected_options.add(option)
+            except AnswerOption.DoesNotExist:
+                pass
+        
+        answer.save()
+    
+    return JsonResponse({'success': True})
 
 
 @login_required

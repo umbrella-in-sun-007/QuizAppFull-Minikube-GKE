@@ -462,7 +462,7 @@
             <strong>Marks:</strong> <span>{{ quiz.get_total_marks }}</span>
         </div>
         <div class="timer-display" id="timer">
-            <span id="timeLeft">{{ quiz.duration_minutes }}:00</span>
+            <span id="timeLeft">Loading...</span>
         </div>
     </div>
 </div>
@@ -611,10 +611,50 @@ let currentQuestionNum = 1;
 const totalQuestions = {{ questions|length }};
 const answeredQuestions = new Set();
 
-// Timer
-let timeLeft = {{ quiz.duration_minutes }} * 60;
+// Get CSRF token for AJAX requests
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+const csrftoken = getCookie('csrftoken');
+
+// Timer - Backend Managed
+let timeLeft = {{ time_remaining_seconds }};
 const timerEl = document.getElementById('timeLeft');
 const timerDisplay = document.getElementById('timer');
+const attemptId = {{ attempt.id }};
+const checkTimeUrl = "{% url 'check_quiz_time' attempt.id %}";
+
+// Sync with backend every 10 seconds
+function syncTimeWithBackend() {
+    fetch(checkTimeUrl)
+        .then(response => response.json())
+        .then(data => {
+            if (data.expired || data.completed) {
+                alert('Time up! Your quiz will be submitted automatically.');
+                document.getElementById('quizForm').submit();
+            } else {
+                // Update local timer with backend time
+                timeLeft = data.time_remaining;
+            }
+        })
+        .catch(error => {
+            console.error('Error syncing time with backend:', error);
+        });
+}
+
+// Sync with backend every 10 seconds
+setInterval(syncTimeWithBackend, 10000);
 
 function updateTimer() {
     const mins = Math.floor(timeLeft / 60);
@@ -628,13 +668,26 @@ function updateTimer() {
     if (timeLeft <= 0) {
         alert('Time up! Your quiz will be submitted automatically.');
         document.getElementById('quizForm').submit();
+        return; // Stop the timer
     }
     
     timeLeft--;
 }
 
+// Update timer display every second
 setInterval(updateTimer, 1000);
 updateTimer();
+
+// Also check backend time before form submission
+document.getElementById('quizForm').addEventListener('submit', function(e) {
+    // Let the form submit - backend will validate time
+    // This is just to show a loading state
+    const submitBtn = document.querySelector('.btn-submit');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+    }
+});
 
 // Question Navigation
 function showQuestion(questionNum) {
