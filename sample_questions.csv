@@ -1,6 +1,7 @@
-question_text,question_type,marks,option_1,option_1_correct,option_2,option_2_correct,option_3,option_3_correct,option_4,option_4_correct,explanation,is_required
-"What is 2+2?",single,1,"3",false,"4",true,"5",false,"6",false,"Basic addition: 2+2 equals 4",true
-"Python is a programming language",true_false,1,"True",true,"False",false,"Python is indeed a programming language",true
-"What is the capital of France?",single,1,"London",false,"Paris",true,"Berlin",false,"Madrid",false,"Paris is the capital city of France",true
-"Select all programming languages from the list",multiple,2,"Python",true,"HTML",false,"Java",true,"CSS",false,"HTML and CSS are markup/style languages, not programming languages",true
-"Which of these are web browsers?",multiple,2,"Chrome",true,"Firefox",true,"Windows",false,"Python",false,"Chrome and Firefox are web browsers",true
+﻿question_text,question_type,marks,option_1,option_1_correct,option_2,option_2_correct,option_3,option_3_correct,option_4,option_4_correct,explanation,is_required
+What is 2+2?,single,1,3,FALSE,4,TRUE,5,FALSE,6,FALSE,Basic addition: 2+2 equals 4,TRUE
+Python is a programming language,true_false,1,True,TRUE,False,FALSE,Python is indeed a programming language,TRUE,,,,
+What is the capital of France?,single,1,London,FALSE,Paris,TRUE,Berlin,FALSE,Madrid,FALSE,Paris is the capital city of France,TRUE
+Select all programming languages from the list,multiple,2,Python,TRUE,HTML,FALSE,Java,TRUE,CSS,FALSE,"HTML and CSS are markup/style languages, not programming languages",TRUE
+Which of these are web browsers?,multiple,2,Chrome,TRUE,Firefox,TRUE,Windows,FALSE,Python,FALSE,Chrome and Firefox are web browsers,TRUE
+

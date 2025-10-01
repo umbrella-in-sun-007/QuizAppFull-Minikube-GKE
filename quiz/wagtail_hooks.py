@@ -285,4 +285,6 @@ def add_import_button(page, user, next_url=None):
                     priority=10
                 )
             ]
+    
+    return []
 

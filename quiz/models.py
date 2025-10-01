@@ -53,6 +53,10 @@ class Quiz(Page):
         default=False,
         help_text="Randomize question order for each attempt"
     )
+    shuffle_options = models.BooleanField(
+        default=False,
+        help_text="Shuffle answer options for each question"
+    )
     start_date = models.DateTimeField(
         null=True,
         blank=True,
@@ -63,6 +67,38 @@ class Quiz(Page):
         blank=True,
         help_text="Quiz will be available until this date"
     )
+    
+    # Security and monitoring settings
+    monitor_tab_switching = models.BooleanField(
+        default=False,
+        help_text="Monitor and count tab switches during quiz"
+    )
+    max_tab_switches = models.IntegerField(
+        default=3,
+        validators=[MinValueValidator(0)],
+        help_text="Maximum allowed tab switches (0 = unlimited)"
+    )
+    auto_submit_on_violations = models.BooleanField(
+        default=False,
+        help_text="Automatically submit quiz when violation limit is reached"
+    )
+    enable_fullscreen = models.BooleanField(
+        default=False,
+        help_text="Require fullscreen mode during quiz"
+    )
+    disable_right_click = models.BooleanField(
+        default=False,
+        help_text="Disable right-click context menu during quiz"
+    )
+    disable_copy_paste = models.BooleanField(
+        default=False,
+        help_text="Disable copy and paste during quiz"
+    )
+    prevent_browser_back = models.BooleanField(
+        default=False,
+        help_text="Prevent using browser back button during quiz"
+    )
+    
     tags = ClusterTaggableManager(through=QuizTag, blank=True)
     created_by = models.ForeignKey(
         User,
@@ -85,11 +121,21 @@ class Quiz(Page):
             FieldPanel('is_active'),
             FieldPanel('show_results_immediately'),
             FieldPanel('randomize_questions'),
+            FieldPanel('shuffle_options'),
         ], heading="Display Options"),
         MultiFieldPanel([
             FieldPanel('start_date'),
             FieldPanel('end_date'),
         ], heading="Schedule"),
+        MultiFieldPanel([
+            FieldPanel('monitor_tab_switching'),
+            FieldPanel('max_tab_switches'),
+            FieldPanel('auto_submit_on_violations'),
+            FieldPanel('enable_fullscreen'),
+            FieldPanel('disable_right_click'),
+            FieldPanel('disable_copy_paste'),
+            FieldPanel('prevent_browser_back'),
+        ], heading="Security & Anti-Cheating"),
         FieldPanel('tags'),
         InlinePanel('questions', label="Questions"),
     ]
