@@ -25,6 +25,7 @@
 
         {# Global stylesheets #}
         <link rel="stylesheet" type="text/css" href="{% static 'css/quizapp.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'css/header.css' %}">
 
         {% block extra_css %}
         {# Override this in templates to add extra stylesheets #}
@@ -33,6 +34,8 @@
 
     <body class="{% block body_class %}{% endblock %}">
         {% wagtailuserbar %}
+
+        {% include 'includes/header.html' %}
 
         {% block content %}{% endblock %}
 

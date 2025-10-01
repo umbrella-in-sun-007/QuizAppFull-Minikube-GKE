@@ -2,20 +2,6 @@
 {% load static %}
 
 {% block content %}
-<div class="nav">
-    <a href="/">Home</a>
-    <a href="{% url 'quiz_list' %}">Quizzes</a>
-    <a href="{% url 'student_dashboard' %}">My Dashboard</a>
-    {% if user.is_authenticated %}
-        {% if user.is_staff %}
-        <a href="/admin/" style="float: right;">Admin</a>
-        {% endif %}
-        <span style="float: right; margin-right: 20px;">Welcome, {{ user.username }}</span>
-    {% else %}
-        <a href="/admin/login/" style="float: right;">Login</a>
-    {% endif %}
-</div>
-
 <div class="container">
     <h1>Available Quizzes</h1>
     

@@ -3,19 +3,6 @@
 
 {% block content %}
 
-<div class="nav">
-    <a href="/">Home</a>
-    <a href="{% url 'quiz_list' %}">Quizzes</a>
-    <a href="{% url 'student_dashboard' %}">Dashboard</a>
-    {% if user.is_authenticated %}
-        {% if user.is_staff %}
-        <a href="/admin/" style="float: right;">Admin</a>
-        {% endif %}
-        <a href="{% url 'student_logout' %}" style="float: right; margin-right: 20px;">Logout</a>
-        <span style="float: right; margin-right: 20px;">Welcome, {{ user.username }}</span>
-    {% endif %}
-</div>
-
 <div class="container">
 
     <h1>Quiz Analytics: {{ quiz.title }}</h1>

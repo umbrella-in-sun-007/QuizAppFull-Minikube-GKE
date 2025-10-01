@@ -1,0 +1,168 @@
+/* Modern Simple Header - No Emojis, No Hover Effects */
+
+.main-header {
+    background-color: #2c3e50;
+    border-bottom: 3px solid #3498db;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.header-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 60px;
+    gap: 20px;
+}
+
+/* Brand */
+.header-brand {
+    flex-shrink: 0;
+}
+
+.brand-link {
+    font-size: 24px;
+    font-weight: bold;
+    color: #fff;
+    text-decoration: none;
+    letter-spacing: 0.5px;
+}
+
+/* Navigation */
+.header-nav {
+    display: flex;
+    gap: 5px;
+    flex: 1;
+    justify-content: center;
+}
+
+.nav-link {
+    color: #ecf0f1;
+    text-decoration: none;
+    padding: 10px 20px;
+    font-size: 15px;
+    font-weight: 500;
+    border: 1px solid transparent;
+    transition: none;
+}
+
+.nav-link:active {
+    background-color: #34495e;
+    border-color: #3498db;
+}
+
+/* Actions */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.user-info {
+    color: #ecf0f1;
+    font-size: 14px;
+    padding: 8px 12px;
+    border-left: 2px solid #34495e;
+    font-weight: 500;
+}
+
+.header-btn {
+    padding: 8px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    border: 1px solid;
+    display: inline-block;
+    text-align: center;
+    transition: none;
+}
+
+.header-btn-primary {
+    background-color: #3498db;
+    color: #fff;
+    border-color: #2980b9;
+}
+
+.header-btn-primary:active {
+    background-color: #2980b9;
+}
+
+.header-btn-secondary {
+    background-color: transparent;
+    color: #ecf0f1;
+    border-color: #7f8c8d;
+}
+
+.header-btn-secondary:active {
+    background-color: #34495e;
+    border-color: #95a5a6;
+}
+
+.header-btn-admin {
+    background-color: #e74c3c;
+    color: #fff;
+    border-color: #c0392b;
+}
+
+.header-btn-admin:active {
+    background-color: #c0392b;
+}
+
+/* Responsive Design */
+@media (max-width: 992px) {
+    .header-container {
+        flex-wrap: wrap;
+    }
+    
+    .header-nav {
+        order: 3;
+        flex-basis: 100%;
+        justify-content: flex-start;
+        padding: 10px 0;
+        border-top: 1px solid #34495e;
+    }
+    
+    .nav-link {
+        padding: 8px 15px;
+    }
+}
+
+@media (max-width: 640px) {
+    .header-container {
+        padding: 0 15px;
+        min-height: auto;
+    }
+    
+    .brand-link {
+        font-size: 20px;
+    }
+    
+    .header-actions {
+        gap: 8px;
+    }
+    
+    .user-info {
+        display: none;
+    }
+    
+    .header-btn {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+    
+    .header-nav {
+        gap: 0;
+        flex-wrap: wrap;
+    }
+    
+    .nav-link {
+        font-size: 14px;
+        padding: 8px 12px;
+    }
+}

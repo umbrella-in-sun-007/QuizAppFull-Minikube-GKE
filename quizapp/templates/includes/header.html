@@ -1,0 +1,29 @@
+{% load static %}
+<header class="main-header">
+    <div class="header-container">
+        <div class="header-brand">
+            <a href="/" class="brand-link">QuizApp</a>
+        </div>
+        
+        <nav class="header-nav">
+            <a href="/" class="nav-link">Home</a>
+            <a href="{% url 'quiz_list' %}" class="nav-link">Quizzes</a>
+            {% if user.is_authenticated %}
+                <a href="{% url 'student_dashboard' %}" class="nav-link">Dashboard</a>
+            {% endif %}
+        </nav>
+        
+        <div class="header-actions">
+            {% if user.is_authenticated %}
+                <span class="user-info">{{ user.username }}</span>
+                {% if user.is_staff %}
+                    <a href="/admin/" class="header-btn header-btn-admin">Admin</a>
+                {% endif %}
+                <a href="{% url 'student_logout' %}" class="header-btn header-btn-secondary">Logout</a>
+            {% else %}
+                <a href="/admin/login/" class="header-btn header-btn-primary">Login</a>
+                <a href="{% url 'student_register' %}" class="header-btn header-btn-secondary">Register</a>
+            {% endif %}
+        </div>
+    </div>
+</header>
