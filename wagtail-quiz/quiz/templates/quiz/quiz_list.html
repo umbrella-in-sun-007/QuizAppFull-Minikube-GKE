@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" type="text/css" href="{% static 'css/quiz.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="nav">
+    <a href="/">Home</a>
+    <a href="{% url 'quiz_list' %}">Quizzes</a>
+    <a href="{% url 'student_dashboard' %}">My Dashboard</a>
+    {% if user.is_authenticated %}
+        <a href="/admin/" style="float: right;">Admin</a>
+        <span style="float: right; margin-right: 20px;">Welcome, {{ user.username }}</span>
+    {% else %}
+        <a href="/admin/login/" style="float: right;">Login</a>
+    {% endif %}
+</div>
+<div class="container">
+    <h1>Available Quizzes</h1>
+    
+    {% if messages %}
+        {% for message in messages %}
+        <div class="message message-{{ message.tags }}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    {% endif %}
+    
+    {% if quiz_data %}
+        <div class="quiz-grid">
+            {% for item in quiz_data %}
+            <div class="card">
+                <h2>{{ item.quiz.title }}</h2>
+                <p>{{ item.quiz.description|striptags|truncatewords:15 }}</p>
+                
+                <p><strong>Duration:</strong> {{ item.quiz.duration_minutes }} minutes</p>
+                <p><strong>Pass Mark:</strong> {{ item.quiz.pass_percentage }}%</p>
+                <p><strong>Attempts:</strong> {{ item.attempts_count }} / {{ item.quiz.max_attempts }}</p>
+                
+                {% if item.best_score %}
+                <p><strong>Best Score:</strong> 
+                    <span class="badge badge-{% if item.best_score >= item.quiz.pass_percentage %}success{% else %}warning{% endif %}">
+                        {{ item.best_score|floatformat:1 }}%
+                    </span>
+                </p>
+                {% endif %}
+                
+                <div style="margin-top: 15px;">
+                    <a href="{% url 'quiz_detail' item.quiz.id %}" class="btn">View Details</a>
+                    {% if item.can_attempt %}
+                    <a href="{% url 'start_quiz' item.quiz.id %}" class="btn btn-success">Start Quiz</a>
+                    {% else %}
+                    <button class="btn" disabled>{{ item.message }}</button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="message message-info">
+            <h3>No quizzes available</h3>
+            <p>There are currently no quizzes available. Please check back later.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

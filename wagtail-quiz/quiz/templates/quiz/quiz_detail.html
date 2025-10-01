@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="nav">
+    <a href="/">Home</a>
+    <a href="{% url 'quiz_list' %}">Quizzes</a>
+    <a href="{% url 'student_dashboard' %}">Dashboard</a>
+</div>
+
+<div class="container">
+    <div class="card">
+        <h1>{{ quiz.title }}</h1>
+        {{ quiz.description|safe }}
+    </div>
+    
+    {% if messages %}
+        {% for message in messages %}
+        <div class="message message-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+    
+    <div class="card">
+        <h2>Quiz Information</h2>
+        <table>
+            <tr><td><strong>Duration</strong></td><td>{{ quiz.duration_minutes }} min</td></tr>
+            <tr><td><strong>Questions</strong></td><td>{{ quiz.questions.count }}</td></tr>
+            <tr><td><strong>Total Marks</strong></td><td>{{ total_marks }}</td></tr>
+            <tr><td><strong>Pass Mark</strong></td><td>{{ quiz.pass_percentage }}%</td></tr>
+            <tr><td><strong>Your Attempts</strong></td><td>{{ attempts.count }}/{{ quiz.max_attempts }}</td></tr>
+        </table>
+        
+        {% if can_attempt %}
+            <a href="{% url 'start_quiz' quiz.id %}" class="btn btn-success">Start Quiz</a>
+        {% else %}
+            <p style="color: red;">{{ message }}</p>
+        {% endif %}
+    </div>
+    
+    {% if attempts %}
+    <div class="card">
+        <h2>Your Attempts</h2>
+        <table>
+            <tr><th>#</th><th>Date</th><th>Score</th><th>Action</th></tr>
+            {% for attempt in attempts %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ attempt.start_time|date:"M d, Y" }}</td>
+                <td>
+                    {% if attempt.is_completed %}
+                        <span class="badge badge-{% if attempt.is_passed %}success{% else %}danger{% endif %}">
+                            {{ attempt.percentage|floatformat:1 }}%
+                        </span>
+                    {% else %}
+                        In Progress
+                    {% endif %}
+                </td>
+                <td>
+                    {% if attempt.is_completed %}
+                        <a href="{% url 'quiz_result' attempt.id %}" class="btn">View</a>
+                    {% else %}
+                        <a href="{% url 'take_quiz' attempt.id %}" class="btn btn-primary">Continue</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

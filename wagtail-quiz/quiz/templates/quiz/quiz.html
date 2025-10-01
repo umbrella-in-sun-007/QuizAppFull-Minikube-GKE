@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="nav">
+    <a href="/">Home</a>
+    <a href="/quiz/">All Quizzes</a>
+    {% if user.is_authenticated %}
+        <a href="/quiz/dashboard/">Dashboard</a>
+        <a href="/admin/" style="float: right;">Admin</a>
+    {% else %}
+        <a href="/quiz/login/" style="float: right;">Login</a>
+    {% endif %}
+</div>
+
+<div class="container">
+    <div class="card">
+        <h1>{{ page.title }}</h1>
+        <div>{{ page.description|safe }}</div>
+    </div>
+    
+    <div class="card">
+        <h2>Quiz Information</h2>
+        <table>
+            <tr>
+                <td><strong>Duration</strong></td>
+                <td>{{ page.duration_minutes }} minutes</td>
+            </tr>
+            <tr>
+                <td><strong>Total Questions</strong></td>
+                <td>{{ page.questions.count }}</td>
+            </tr>
+            <tr>
+                <td><strong>Total Marks</strong></td>
+                <td>{{ page.get_total_marks }}</td>
+            </tr>
+            <tr>
+                <td><strong>Pass Percentage</strong></td>
+                <td>{{ page.pass_percentage }}%</td>
+            </tr>
+            <tr>
+                <td><strong>Maximum Attempts</strong></td>
+                <td>{{ page.max_attempts }}</td>
+            </tr>
+        </table>
+    </div>
+    
+    {% if user.is_authenticated %}
+    <div class="card">
+        <h2>Take This Quiz</h2>
+        <p>Ready to test your knowledge?</p>
+        <a href="/quiz/{{ page.id }}/" class="btn btn-success">View Quiz Details</a>
+        <a href="/quiz/{{ page.id }}/start/" class="btn btn-primary">Start Quiz Now</a>
+    </div>
+    {% else %}
+    <div class="card">
+        <h2>Login Required</h2>
+        <p>Please login to take this quiz.</p>
+        <a href="/quiz/login/" class="btn btn-primary">Login</a>
+    </div>
+    {% endif %}
+    
+    {% if user.is_staff %}
+    <div class="card">
+        <h2>Teacher Options</h2>
+        <a href="/admin/pages/{{ page.id }}/edit/" class="btn">Edit Quiz</a>
+        <a href="/quiz/{{ page.id }}/analytics/" class="btn">View Analytics</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

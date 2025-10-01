@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="nav">
+    <a href="/">Home</a>
+    <a href="{% url 'quiz_list' %}">Quizzes</a>
+    <a href="{% url 'student_dashboard' %}">Dashboard</a>
+</div>
+
+<div class="container">
+    <h1>My Dashboard</h1>
+    
+    <div class="stats">
+        <div class="stat-card">
+            <h2>{{ total_attempts }}</h2>
+            <p>Total Attempts</p>
+        </div>
+        <div class="stat-card">
+            <h2>{{ passed_attempts }}</h2>
+            <p>Passed</p>
+        </div>
+        <div class="stat-card">
+            <h2>{{ failed_attempts }}</h2>
+            <p>Failed</p>
+        </div>
+        <div class="stat-card">
+            <h2>{{ avg_percentage }}%</h2>
+            <p>Average Score</p>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2>Recent Attempts</h2>
+        {% if recent_attempts %}
+        <table>
+            <tr>
+                <th>Quiz</th>
+                <th>Date</th>
+                <th>Score</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+            {% for attempt in recent_attempts %}
+            <tr>
+                <td>{{ attempt.quiz.title }}</td>
+                <td>{{ attempt.start_time|date:"M d, Y" }}</td>
+                <td>{{ attempt.score }} / {{ attempt.quiz.get_total_marks }}</td>
+                <td>
+                    <span class="badge badge-{% if attempt.is_passed %}success{% else %}danger{% endif %}">
+                        {{ attempt.percentage|floatformat:1 }}%
+                    </span>
+                </td>
+                <td>
+                    <a href="{% url 'quiz_result' attempt.id %}" class="btn">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p>No attempts yet. <a href="{% url 'quiz_list' %}">Take a quiz</a></p>
+        {% endif %}
+    </div>
+    
+    {% if quiz_performance %}
+    <div class="card">
+        <h2>Quiz Performance</h2>
+        {% for perf in quiz_performance %}
+        <div style="padding: 15px; border: 1px solid #ddd; margin-bottom: 10px;">
+            <h3>{{ perf.quiz.title }}</h3>
+            <p>Attempts: {{ perf.attempts_count }} | Best: {{ perf.best_percentage|floatformat:1 }}% | Avg: {{ perf.avg_percentage|floatformat:1 }}%</p>
+            <a href="{% url 'quiz_detail' perf.quiz.id %}" class="btn">View Quiz</a>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

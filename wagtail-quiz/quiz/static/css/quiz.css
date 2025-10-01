@@ -1,0 +1,102 @@
+/* Quiz App Custom Styles */
+
+.quiz-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.quiz-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.question-block {
+    background-color: #f8f9fa;
+    transition: background-color 0.3s;
+}
+
+.question-block:hover {
+    background-color: #e9ecef;
+}
+
+.quiz-timer {
+    font-size: 1.2rem;
+    font-weight: bold;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+}
+
+.quiz-timer.warning {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.quiz-timer.danger {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.result-stat {
+    padding: 1rem;
+}
+
+.answer-review {
+    background-color: #f8f9fa;
+    border-left: 4px solid #dee2e6;
+}
+
+.answer-review.correct {
+    border-left-color: #28a745;
+}
+
+.answer-review.incorrect {
+    border-left-color: #dc3545;
+}
+
+.question-navigator a {
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.quiz-performance-item {
+    background-color: #f8f9fa;
+    transition: background-color 0.2s;
+}
+
+.quiz-performance-item:hover {
+    background-color: #e9ecef;
+}
+
+/* Analytics page styles */
+.question-analysis-item {
+    background-color: #ffffff;
+}
+
+.sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Progress bars */
+.progress {
+    border-radius: 0.5rem;
+}
+
+.progress-bar {
+    transition: width 0.6s ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .quiz-timer {
+        font-size: 1rem;
+    }
+    
+    .question-navigator a {
+        width: 35px;
+        height: 35px;
+    }
+}

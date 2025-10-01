@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="nav">
+    <a href="{% url 'quiz_list' %}">Quizzes</a>
+    <a href="{% url 'student_dashboard' %}">Dashboard</a>
+</div>
+
+<div class="container">
+    <div class="result-header {% if attempt.is_passed %}passed{% else %}failed{% endif %}">
+        <h1>{% if attempt.is_passed %}✓ PASSED{% else %}✗ FAILED{% endif %}</h1>
+        <div class="result-score">{{ attempt.percentage|floatformat:1 }}%</div>
+        <p>You scored {{ attempt.score }} out of {{ quiz.get_total_marks }} marks</p>
+        <p>Pass mark: {{ quiz.pass_percentage }}%</p>
+    </div>
+    
+    <div class="stats">
+        <div class="stat-card">
+            <h2>{{ attempt.score }}</h2>
+            <p>Your Score</p>
+        </div>
+        <div class="stat-card">
+            <h2>{{ quiz.get_total_marks }}</h2>
+            <p>Total Marks</p>
+        </div>
+        <div class="stat-card">
+            <h2>{{ attempt.get_attempt_number }}</h2>
+            <p>Attempt Number</p>
+        </div>
+    </div>
+    
+    <div class="card">
+        <p><strong>Quiz:</strong> {{ quiz.title }}</p>
+        <p><strong>Started:</strong> {{ attempt.start_time|date:"M d, Y H:i" }}</p>
+        <p><strong>Completed:</strong> {{ attempt.end_time|date:"M d, Y H:i" }}</p>
+        
+        <a href="{% url 'quiz_list' %}" class="btn btn-primary">Back to Quizzes</a>
+        <a href="{% url 'student_dashboard' %}" class="btn">View Dashboard</a>
+    </div>
+    
+    {% if show_answers %}
+    <div class="card">
+        <h2>Answer Review</h2>
+        
+        {% for answer_data in answers %}
+        <div class="question-block" style="{% if answer_data.is_correct %}border-left: 4px solid #28a745;{% else %}border-left: 4px solid #dc3545;{% endif %}">
+            <h3>Question {{ forloop.counter }}
+                {% if answer_data.is_correct %}
+                    <span class="badge badge-success">✓ Correct</span>
+                {% else %}
+                    <span class="badge badge-danger">✗ Incorrect</span>
+                {% endif %}
+            </h3>
+            
+            <div class="question-text">
+                {{ answer_data.question.question_text|safe }}
+            </div>
+            
+            {% if answer_data.question.question_type != 'short_answer' %}
+                <p><strong>Your Answer:</strong></p>
+                {% for option in answer_data.selected_options %}
+                    <p>• {{ option.option_text }}</p>
+                {% empty %}
+                    <p>No answer selected</p>
+                {% endfor %}
+                
+                <p><strong>Correct Answer:</strong></p>
+                {% for option in answer_data.correct_options %}
+                    <p style="color: #28a745;">• {{ option.option_text }}</p>
+                {% endfor %}
+            {% else %}
+                <p><strong>Your Answer:</strong></p>
+                <p style="background: #f5f5f5; padding: 10px; border: 1px solid #ddd;">
+                    {{ answer_data.text_answer|default:"No answer provided" }}
+                </p>
+            {% endif %}
+            
+            {% if answer_data.question.explanation %}
+            <div style="background: #e7f3ff; padding: 10px; margin-top: 10px; border-left: 4px solid #0066cc;">
+                <strong>Explanation:</strong><br>
+                {{ answer_data.question.explanation|safe }}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
