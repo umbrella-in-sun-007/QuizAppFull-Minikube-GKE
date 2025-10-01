@@ -99,13 +99,17 @@ def quiz_list(request):
         
         best_attempt = attempts.filter(is_completed=True).order_by('-percentage').first()
         
+        # Check if user can view analytics for this quiz
+        can_view_analytics = request.user.is_staff and (request.user.is_superuser or quiz.is_owner(request.user))
+        
         quiz_data.append({
             'quiz': quiz,
             'can_attempt': can_attempt,
             'message': message,
             'attempts_count': attempts.count(),
             'best_score': best_attempt.percentage if best_attempt else None,
-            'last_attempt': attempts.first()
+            'last_attempt': attempts.first(),
+            'can_view_analytics': can_view_analytics
         })
     
     context = {
@@ -126,12 +130,16 @@ def quiz_detail(request, quiz_id):
         student=request.user
     ).order_by('-start_time')
     
+    # Check if user can view analytics (staff and owner)
+    can_view_analytics = request.user.is_staff and (request.user.is_superuser or quiz.is_owner(request.user))
+    
     context = {
         'quiz': quiz,
         'can_attempt': can_attempt,
         'message': message,
         'attempts': attempts,
-        'total_marks': quiz.get_total_marks()
+        'total_marks': quiz.get_total_marks(),
+        'can_view_analytics': can_view_analytics
     }
     return render(request, 'quiz/quiz_detail.html', context)
 
@@ -295,7 +303,7 @@ def student_dashboard(request):
 # Analytics views for teachers (accessible from admin)
 @login_required
 def quiz_analytics(request, quiz_id):
-    """Analytics for a specific quiz"""
+    """Analytics for a specific quiz - Enhanced with comprehensive statistics"""
     if not request.user.is_staff:
         messages.error(request, 'You do not have permission to view this page.')
         return redirect('quiz_list')
@@ -309,13 +317,55 @@ def quiz_analytics(request, quiz_id):
         return redirect('quiz_list')
     
     # Get all completed attempts
-    attempts = QuizAttempt.objects.filter(quiz=quiz, is_completed=True)
+    attempts = QuizAttempt.objects.filter(quiz=quiz, is_completed=True).select_related('student')
     
-    # Statistics
+    # Basic Statistics
     total_attempts = attempts.count()
     unique_students = attempts.values('student').distinct().count()
     avg_score = attempts.aggregate(Avg('percentage'))['percentage__avg'] or 0
     pass_rate = (attempts.filter(is_passed=True).count() / total_attempts * 100) if total_attempts > 0 else 0
+    
+    # Get best attempt per student (for unique student analysis)
+    from django.db.models import Max
+    best_attempts_per_student = []
+    student_ids = attempts.values_list('student_id', flat=True).distinct()
+    
+    for student_id in student_ids:
+        student_attempts = attempts.filter(student_id=student_id)
+        best_attempt = student_attempts.order_by('-percentage', 'end_time').first()
+        if best_attempt:
+            best_attempts_per_student.append(best_attempt)
+    
+    # Sort by percentage for ranking
+    best_attempts_per_student.sort(key=lambda x: (-x.percentage, x.end_time - x.start_time))
+    
+    # Top Performer (Highest Score)
+    topper = best_attempts_per_student[0] if best_attempts_per_student else None
+    
+    # Top 10% Students
+    top_10_percent_count = max(1, int(len(best_attempts_per_student) * 0.1))
+    top_10_percent = best_attempts_per_student[:top_10_percent_count]
+    
+    # Time Analysis - Calculate duration for each attempt
+    time_analysis = []
+    for attempt in attempts:
+        if attempt.start_time and attempt.end_time:
+            duration = (attempt.end_time - attempt.start_time).total_seconds() / 60  # in minutes
+            time_analysis.append({
+                'attempt': attempt,
+                'duration_minutes': round(duration, 2),
+                'duration_display': f"{int(duration // 60)}h {int(duration % 60)}m" if duration >= 60 else f"{int(duration)}m"
+            })
+    
+    # Sort by duration
+    time_analysis.sort(key=lambda x: x['duration_minutes'])
+    
+    # Fastest and Slowest
+    fastest_attempts = time_analysis[:5] if time_analysis else []
+    slowest_attempts = time_analysis[-5:][::-1] if time_analysis else []
+    
+    # Average completion time
+    avg_duration = sum([t['duration_minutes'] for t in time_analysis]) / len(time_analysis) if time_analysis else 0
     
     # Question-wise analysis
     question_analysis = []
@@ -344,20 +394,42 @@ def quiz_analytics(request, quiz_id):
             'question': question,
             'total_answers': total_answers,
             'correct_answers': correct_answers,
-            'accuracy': round(accuracy, 2)
+            'accuracy': round(accuracy, 2),
+            'difficulty': 'Easy' if accuracy >= 70 else 'Medium' if accuracy >= 40 else 'Hard'
         })
     
     # Score distribution
     score_ranges = [
-        {'range': '0-20%', 'count': attempts.filter(percentage__lt=20).count()},
-        {'range': '20-40%', 'count': attempts.filter(percentage__gte=20, percentage__lt=40).count()},
-        {'range': '40-60%', 'count': attempts.filter(percentage__gte=40, percentage__lt=60).count()},
-        {'range': '60-80%', 'count': attempts.filter(percentage__gte=60, percentage__lt=80).count()},
-        {'range': '80-100%', 'count': attempts.filter(percentage__gte=80).count()},
+        {'range': '0-20%', 'count': attempts.filter(percentage__lt=20).count(), 'label': 'Fail'},
+        {'range': '20-40%', 'count': attempts.filter(percentage__gte=20, percentage__lt=40).count(), 'label': 'Poor'},
+        {'range': '40-60%', 'count': attempts.filter(percentage__gte=40, percentage__lt=60).count(), 'label': 'Average'},
+        {'range': '60-80%', 'count': attempts.filter(percentage__gte=60, percentage__lt=80).count(), 'label': 'Good'},
+        {'range': '80-100%', 'count': attempts.filter(percentage__gte=80).count(), 'label': 'Excellent'},
     ]
     
-    # Top performers
-    top_performers = attempts.order_by('-percentage')[:10]
+    # Student Performance Summary (all attempts per student)
+    student_performance = []
+    for student_id in student_ids:
+        student_attempts = attempts.filter(student_id=student_id)
+        student = student_attempts.first().student
+        best_attempt = student_attempts.order_by('-percentage').first()
+        latest_attempt = student_attempts.order_by('-start_time').first()
+        
+        student_performance.append({
+            'student': student,
+            'total_attempts': student_attempts.count(),
+            'best_score': best_attempt.percentage,
+            'latest_score': latest_attempt.percentage,
+            'avg_score': student_attempts.aggregate(Avg('percentage'))['percentage__avg'],
+            'passed': best_attempt.is_passed,
+            'improvement': latest_attempt.percentage - student_attempts.order_by('start_time').first().percentage if student_attempts.count() > 1 else 0
+        })
+    
+    # Sort by best score
+    student_performance.sort(key=lambda x: -x['best_score'])
+    
+    # Recent attempts
+    recent_attempts = attempts.order_by('-start_time')[:20]
     
     context = {
         'quiz': quiz,
@@ -365,10 +437,25 @@ def quiz_analytics(request, quiz_id):
         'unique_students': unique_students,
         'avg_score': round(avg_score, 2),
         'pass_rate': round(pass_rate, 2),
+        
+        # Top Performers
+        'topper': topper,
+        'top_10_percent': top_10_percent,
+        'top_10_percent_count': top_10_percent_count,
+        
+        # Time Analysis
+        'fastest_attempts': fastest_attempts,
+        'slowest_attempts': slowest_attempts,
+        'avg_duration_minutes': round(avg_duration, 2),
+        'avg_duration_display': f"{int(avg_duration // 60)}h {int(avg_duration % 60)}m" if avg_duration >= 60 else f"{int(avg_duration)}m",
+        
+        # Question Analysis
         'question_analysis': question_analysis,
         'score_distribution': score_ranges,
-        'top_performers': top_performers,
-        'recent_attempts': attempts.order_by('-start_time')[:20]
+        
+        # Student Performance
+        'student_performance': student_performance,
+        'recent_attempts': recent_attempts,
     }
     return render(request, 'quiz/analytics.html', context)
 

@@ -56,6 +56,9 @@
                     {% else %}
                     <button class="btn" disabled>{{ item.message }}</button>
                     {% endif %}
+                    {% if item.can_view_analytics %}
+                    <a href="{% url 'quiz_analytics' item.quiz.id %}" class="btn btn-primary" style="background-color: #007bff;">📊 Analytics</a>
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}

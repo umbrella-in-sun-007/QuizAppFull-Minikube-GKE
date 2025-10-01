@@ -15,7 +15,18 @@
 
 <div class="container">
     <div class="card">
-        <h1>{{ quiz.title }}</h1>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1>{{ quiz.title }}</h1>
+            </div>
+            {% if can_view_analytics %}
+            <div>
+                <a href="{% url 'quiz_analytics' quiz.id %}" class="btn btn-primary" style="background-color: #007bff;">
+                    📊 View Analytics
+                </a>
+            </div>
+            {% endif %}
+        </div>
         {{ quiz.description|safe }}
     </div>
     
