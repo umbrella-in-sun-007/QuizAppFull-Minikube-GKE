@@ -445,10 +445,188 @@
             flex: 1;
         }
     }
+    
+    /* Custom Alert Modal */
+    .custom-alert-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .custom-alert-overlay.show {
+        display: flex;
+    }
+    
+    .custom-alert-box {
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        max-width: 500px;
+        width: 90%;
+        animation: slideDown 0.3s ease-out;
+    }
+    
+    @keyframes slideDown {
+        from {
+            transform: translateY(-50px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    
+    .custom-alert-header {
+        padding: 20px;
+        border-bottom: 2px solid #e74c3c;
+        background-color: #e74c3c;
+        color: #fff;
+        border-radius: 8px 8px 0 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .custom-alert-header.warning {
+        background-color: #f39c12;
+        border-bottom-color: #f39c12;
+    }
+    
+    .custom-alert-header.info {
+        background-color: #3498db;
+        border-bottom-color: #3498db;
+    }
+    
+    .custom-alert-header.success {
+        background-color: #27ae60;
+        border-bottom-color: #27ae60;
+    }
+    
+    .custom-alert-icon {
+        font-size: 24px;
+        font-weight: bold;
+    }
+    
+    .custom-alert-title {
+        font-size: 18px;
+        font-weight: bold;
+        margin: 0;
+    }
+    
+    .custom-alert-body {
+        padding: 25px;
+        color: #2c3e50;
+        font-size: 15px;
+        line-height: 1.6;
+    }
+    
+    .custom-alert-footer {
+        padding: 15px 20px;
+        border-top: 1px solid #ecf0f1;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+    
+    .custom-alert-btn {
+        padding: 10px 25px;
+        font-size: 14px;
+        font-weight: bold;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .custom-alert-btn-primary {
+        background-color: #3498db;
+        color: #fff;
+    }
+    
+    .custom-alert-btn-primary:hover {
+        background-color: #2980b9;
+    }
+    
+    .custom-alert-btn-danger {
+        background-color: #e74c3c;
+        color: #fff;
+    }
+    
+    .custom-alert-btn-danger:hover {
+        background-color: #c0392b;
+    }
+    
+    .custom-alert-btn-secondary {
+        background-color: #95a5a6;
+        color: #fff;
+    }
+    
+    .custom-alert-btn-secondary:hover {
+        background-color: #7f8c8d;
+    }
+    
+    /* Custom Confirm Modal */
+    .custom-confirm-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .custom-confirm-overlay.show {
+        display: flex;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
+<!-- Custom Alert Modal -->
+<div class="custom-alert-overlay" id="customAlertOverlay">
+    <div class="custom-alert-box">
+        <div class="custom-alert-header" id="customAlertHeader">
+            <span class="custom-alert-icon" id="customAlertIcon">!</span>
+            <h3 class="custom-alert-title" id="customAlertTitle">Alert</h3>
+        </div>
+        <div class="custom-alert-body" id="customAlertBody">
+            Alert message
+        </div>
+        <div class="custom-alert-footer">
+            <button class="custom-alert-btn custom-alert-btn-primary" id="customAlertBtn">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- Custom Confirm Modal -->
+<div class="custom-confirm-overlay" id="customConfirmOverlay">
+    <div class="custom-alert-box">
+        <div class="custom-alert-header warning">
+            <span class="custom-alert-icon">?</span>
+            <h3 class="custom-alert-title">Confirm Submission</h3>
+        </div>
+        <div class="custom-alert-body" id="customConfirmBody">
+            Are you sure you want to submit?
+        </div>
+        <div class="custom-alert-footer">
+            <button class="custom-alert-btn custom-alert-btn-secondary" id="customConfirmCancel">Cancel</button>
+            <button class="custom-alert-btn custom-alert-btn-danger" id="customConfirmOk">Submit</button>
+        </div>
+    </div>
+</div>
+
 <!-- Quiz Header -->
 <div class="quiz-header">
     <div class="quiz-header-title">
@@ -594,7 +772,7 @@
                         Please review your answers before submitting. You can navigate back to any question using the question navigator.
                     </p>
                 </div>
-                <button type="submit" class="btn-submit" onclick="return confirm('Are you sure you want to submit? You cannot change your answers after submission.');">
+                <button type="button" class="btn-submit" id="finalSubmitBtn">
                     Submit Quiz
                 </button>
                 <br><br>
@@ -610,6 +788,70 @@
 let currentQuestionNum = 1;
 const totalQuestions = {{ questions|length }};
 const answeredQuestions = new Set();
+
+// Custom Alert Functions
+function showCustomAlert(message, type = 'warning', title = 'Alert') {
+    const overlay = document.getElementById('customAlertOverlay');
+    const header = document.getElementById('customAlertHeader');
+    const icon = document.getElementById('customAlertIcon');
+    const titleEl = document.getElementById('customAlertTitle');
+    const body = document.getElementById('customAlertBody');
+    const btn = document.getElementById('customAlertBtn');
+    
+    // Set content
+    body.innerHTML = message;
+    titleEl.textContent = title;
+    
+    // Set type styling
+    header.className = 'custom-alert-header ' + type;
+    
+    // Set icon based on type
+    if (type === 'danger') {
+        icon.textContent = '!';
+        btn.className = 'custom-alert-btn custom-alert-btn-danger';
+    } else if (type === 'warning') {
+        icon.textContent = '!';
+        btn.className = 'custom-alert-btn custom-alert-btn-primary';
+    } else if (type === 'info') {
+        icon.textContent = 'i';
+        btn.className = 'custom-alert-btn custom-alert-btn-primary';
+    } else if (type === 'success') {
+        icon.textContent = '✓';
+        btn.className = 'custom-alert-btn custom-alert-btn-primary';
+    }
+    
+    // Show modal
+    overlay.classList.add('show');
+    
+    // Return promise for async handling
+    return new Promise((resolve) => {
+        btn.onclick = function() {
+            overlay.classList.remove('show');
+            resolve(true);
+        };
+    });
+}
+
+function showCustomConfirm(message, title = 'Confirm') {
+    const overlay = document.getElementById('customConfirmOverlay');
+    const body = document.getElementById('customConfirmBody');
+    const cancelBtn = document.getElementById('customConfirmCancel');
+    const okBtn = document.getElementById('customConfirmOk');
+    
+    body.innerHTML = message;
+    overlay.classList.add('show');
+    
+    return new Promise((resolve) => {
+        cancelBtn.onclick = function() {
+            overlay.classList.remove('show');
+            resolve(false);
+        };
+        okBtn.onclick = function() {
+            overlay.classList.remove('show');
+            resolve(true);
+        };
+    });
+}
 
 // Get CSRF token for AJAX requests
 function getCookie(name) {
@@ -641,8 +883,13 @@ function syncTimeWithBackend() {
         .then(response => response.json())
         .then(data => {
             if (data.expired || data.completed) {
-                alert('Time up! Your quiz will be submitted automatically.');
-                document.getElementById('quizForm').submit();
+                showCustomAlert(
+                    'Time is up! Your quiz will be submitted automatically.',
+                    'danger',
+                    'Time Expired'
+                ).then(() => {
+                    document.getElementById('quizForm').submit();
+                });
             } else {
                 // Update local timer with backend time
                 timeLeft = data.time_remaining;
@@ -666,8 +913,13 @@ function updateTimer() {
     }
     
     if (timeLeft <= 0) {
-        alert('Time up! Your quiz will be submitted automatically.');
-        document.getElementById('quizForm').submit();
+        showCustomAlert(
+            'Time is up! Your quiz will be submitted automatically.',
+            'danger',
+            'Time Expired'
+        ).then(() => {
+            document.getElementById('quizForm').submit();
+        });
         return; // Stop the timer
     }
     
@@ -678,14 +930,17 @@ function updateTimer() {
 setInterval(updateTimer, 1000);
 updateTimer();
 
-// Also check backend time before form submission
-document.getElementById('quizForm').addEventListener('submit', function(e) {
-    // Let the form submit - backend will validate time
-    // This is just to show a loading state
-    const submitBtn = document.querySelector('.btn-submit');
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Submitting...';
+// Handle form submission with custom confirm
+document.getElementById('finalSubmitBtn').addEventListener('click', async function() {
+    const confirmed = await showCustomConfirm(
+        'Are you sure you want to submit your quiz?<br><br><strong>Important:</strong> You cannot change your answers after submission.',
+        'Confirm Submission'
+    );
+    
+    if (confirmed) {
+        this.disabled = true;
+        this.textContent = 'Submitting...';
+        document.getElementById('quizForm').submit();
     }
 });
 
@@ -808,7 +1063,9 @@ document.addEventListener('click', function(e) {
 function enterFullscreen() {
     const elem = document.documentElement;
     if (elem.requestFullscreen) {
-        elem.requestFullscreen();
+        elem.requestFullscreen().catch(err => {
+            console.log('Fullscreen request failed:', err);
+        });
     } else if (elem.webkitRequestFullscreen) {
         elem.webkitRequestFullscreen();
     } else if (elem.msRequestFullscreen) {
@@ -816,46 +1073,115 @@ function enterFullscreen() {
     }
 }
 
+// Show fullscreen prompt on page load (user must click to trigger fullscreen)
 window.addEventListener('load', function() {
-    enterFullscreen();
+    // Show a prompt asking user to enter fullscreen mode
+    showCustomAlert(
+        'For the best quiz experience, please click OK to enter fullscreen mode. This helps minimize distractions.',
+        'info',
+        'Fullscreen Mode'
+    ).then(() => {
+        enterFullscreen();
+    });
 });
 
+// Monitor fullscreen changes
 document.addEventListener('fullscreenchange', function() {
     if (!document.fullscreenElement) {
-        alert('Warning: You have exited fullscreen mode. Please return to fullscreen to continue the quiz.');
-        enterFullscreen();
+        showCustomAlert(
+            'You have exited fullscreen mode. Please click OK to return to fullscreen and continue the quiz.',
+            'warning',
+            'Fullscreen Required'
+        ).then(() => {
+            enterFullscreen();
+        });
     }
 });
 
 document.addEventListener('webkitfullscreenchange', function() {
     if (!document.webkitFullscreenElement) {
-        alert('Warning: You have exited fullscreen mode. Please return to fullscreen to continue the quiz.');
-        enterFullscreen();
+        showCustomAlert(
+            'You have exited fullscreen mode. Please click OK to return to fullscreen and continue the quiz.',
+            'warning',
+            'Fullscreen Required'
+        ).then(() => {
+            enterFullscreen();
+        });
     }
 });
 
+// Focus/Blur tracking - Deterministic approach
 let focusWarningCount = 0;
-const MAX_WARNINGS = 4;
+const MAX_WARNINGS = 3;
+let isProcessingWarning = false; // Prevent overlapping warnings
 
-window.addEventListener('blur', function() {
-    focusWarningCount++;
-    if (focusWarningCount >= MAX_WARNINGS) {
-        alert('Warning #' + focusWarningCount + ': Maximum warnings reached! Your quiz will be auto-submitted now.');
-        document.getElementById('quizForm').submit();
-    } else {
-        alert('Warning #' + focusWarningCount + ' of ' + MAX_WARNINGS + ': You switched away from the quiz window. Please stay focused on the quiz! One more warning and your quiz will be auto-submitted.');
+// Single unified function to handle focus loss
+async function handleFocusLoss(reason) {
+    // Prevent overlapping warnings
+    if (isProcessingWarning) {
+        return;
     }
-});
+    
+    isProcessingWarning = true;
+    focusWarningCount++;
+    
+    if (focusWarningCount >= MAX_WARNINGS) {
+        await showCustomAlert(
+            `<strong>Warning #${focusWarningCount}</strong><br><br>` +
+            'You have reached the maximum number of warnings. The page will refresh and your progress will be saved.',
+            'danger',
+            'Maximum Warnings Reached'
+        );
+        // Refresh the page to reset focus tracking
+        window.location.reload();
+    } else {
+        const remainingWarnings = MAX_WARNINGS - focusWarningCount;
+        await showCustomAlert(
+            `<strong>Warning #${focusWarningCount} of ${MAX_WARNINGS}</strong><br><br>` +
+            `${reason}<br><br>` +
+            `You have <strong>${remainingWarnings}</strong> warning${remainingWarnings > 1 ? 's' : ''} remaining before your quiz is auto-submitted.`,
+            'warning',
+            'Focus Warning'
+        );
+    }
+    
+    isProcessingWarning = false;
+}
 
+// Track visibility changes (tab switching)
 document.addEventListener('visibilitychange', function() {
     if (document.hidden) {
-        focusWarningCount++;
-        if (focusWarningCount >= MAX_WARNINGS) {
-            alert('Warning #' + focusWarningCount + ': Maximum warnings reached! Your quiz will be auto-submitted now.');
-            document.getElementById('quizForm').submit();
-        } else {
-            alert('Warning #' + focusWarningCount + ' of ' + MAX_WARNINGS + ': You switched to another tab. Please stay on the quiz tab! One more warning and your quiz will be auto-submitted.');
-        }
+        handleFocusLoss('You switched to another tab or minimized the browser. Please stay focused on the quiz.');
+    }
+});
+
+// Prevent context menu (right-click)
+document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    showCustomAlert(
+        'Right-click is disabled during the quiz. The page will refresh.',
+        'warning',
+        'Action Not Allowed'
+    ).then(() => {
+        window.location.reload();
+    });
+});
+
+// Prevent certain keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Prevent F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U (developer tools)
+    if (e.keyCode === 123 || // F12
+        (e.ctrlKey && e.shiftKey && e.keyCode === 73) || // Ctrl+Shift+I
+        (e.ctrlKey && e.shiftKey && e.keyCode === 74) || // Ctrl+Shift+J
+        (e.ctrlKey && e.keyCode === 85)) { // Ctrl+U
+        e.preventDefault();
+        showCustomAlert(
+            'This action is not allowed during the quiz. The page will refresh.',
+            'warning',
+            'Action Not Allowed'
+        ).then(() => {
+            window.location.reload();
+        });
     }
 });
 </script>
