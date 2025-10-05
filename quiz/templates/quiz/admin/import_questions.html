@@ -17,25 +17,30 @@
         
         .import-header h1 {
             margin-bottom: 0.5rem;
+            color: #e0e0e0;
         }
         
         .import-header .quiz-name {
-            color: #666;
+            color: #b0b0b0;
             font-size: 1.1rem;
         }
         
         .upload-box {
-            border: 2px dashed #ccc;
+            border: 2px dashed #4a4a4a;
             border-radius: 8px;
             padding: 2rem;
             text-align: center;
             margin: 2rem 0;
-            background: #f9f9f9;
+            background: #2a2a2a;
         }
         
         .upload-box:hover {
-            border-color: #007d7e;
-            background: #f0f7f7;
+            border-color: #3498db;
+            background: #333333;
+        }
+        
+        .upload-box h3 {
+            color: #e0e0e0;
         }
         
         .file-input-wrapper {
@@ -43,8 +48,8 @@
         }
         
         .info-section {
-            background: #e8f4f8;
-            border-left: 4px solid #007d7e;
+            background: #1a2a3a;
+            border-left: 4px solid #3498db;
             padding: 1rem;
             margin: 2rem 0;
             border-radius: 4px;
@@ -52,11 +57,17 @@
         
         .info-section h3 {
             margin-top: 0;
-            color: #007d7e;
+            color: #5dade2;
+        }
+        
+        .info-section p,
+        .info-section ul,
+        .info-section li {
+            color: #b0b0b0;
         }
         
         .csv-format {
-            background: white;
+            background: #1e1e1e;
             padding: 1rem;
             border-radius: 4px;
             margin-top: 1rem;
@@ -72,12 +83,24 @@
         .csv-format td {
             padding: 0.5rem;
             text-align: left;
-            border: 1px solid #ddd;
+            border: 1px solid #3a3a3a;
+            color: #e0e0e0;
         }
         
         .csv-format th {
-            background: #f0f0f0;
+            background: #2a2a2a;
             font-weight: bold;
+        }
+        
+        .csv-format td {
+            background: #1e1e1e;
+        }
+        
+        .csv-format code {
+            background: #2a2a2a;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            color: #5dade2;
         }
         
         .button-group {
@@ -90,9 +113,13 @@
             margin-top: 2rem;
         }
         
+        .example-section h3 {
+            color: #e0e0e0;
+        }
+        
         .example-box {
-            background: #fff;
-            border: 1px solid #ddd;
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
             border-radius: 4px;
             padding: 1rem;
             margin: 1rem 0;
@@ -100,19 +127,21 @@
         
         .example-box h4 {
             margin-top: 0;
-            color: #333;
+            color: #e0e0e0;
         }
         
         .example-box pre {
-            background: #f5f5f5;
+            background: #1e1e1e;
             padding: 1rem;
             border-radius: 4px;
             overflow-x: auto;
             font-size: 0.85rem;
+            color: #90ee90;
+            border: 1px solid #3a3a3a;
         }
         
         .note {
-            color: #666;
+            color: #808080;
             font-style: italic;
             font-size: 0.9rem;
         }
@@ -124,14 +153,22 @@
         
         .supported-types li {
             padding: 0.5rem;
-            background: white;
+            background: #2a2a2a;
             margin: 0.5rem 0;
             border-radius: 4px;
-            border-left: 3px solid #007d7e;
+            border-left: 3px solid #3498db;
+            color: #e0e0e0;
         }
         
         .supported-types li strong {
-            color: #007d7e;
+            color: #5dade2;
+        }
+        
+        .supported-types li code {
+            background: #1e1e1e;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            color: #90ee90;
         }
     </style>
 {% endblock %}
@@ -147,7 +184,7 @@
             {% csrf_token %}
             
             <div class="upload-box">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="margin: 0 auto; color: #007d7e;">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="margin: 0 auto; color: #3498db;">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                     <polyline points="17 8 12 3 7 8"></polyline>
                     <line x1="12" y1="3" x2="12" y2="15"></line>
@@ -280,8 +317,8 @@
             </div>
         </div>
 
-        <div class="info-section" style="background: #fff3cd; border-left-color: #ffc107;">
-            <h3>⚠️ Important Notes</h3>
+        <div class="info-section" style="background: #3a3a1a; border-left-color: #f39c12;">
+            <h3 style="color: #ffd700;">⚠️ Important Notes</h3>
             <ul>
                 <li>The first row must contain column headers</li>
                 <li>For single choice questions, only one option should be marked as correct</li>
