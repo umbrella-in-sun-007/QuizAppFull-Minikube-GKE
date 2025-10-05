@@ -10,16 +10,16 @@
 body {
     font-family: Arial, sans-serif;
     line-height: 1.6;
-    color: #333;
-    background-color: #f5f5f5;
+    color: #e0e0e0;
+    background-color: #1a1a1a;
     padding-top: 0;
 }
 
 /* Navigation - Legacy styles kept for compatibility */
 .nav {
-    background-color: #2c3e50;
+    background-color: #1e1e1e;
     padding: 15px 20px;
-    border-bottom: 2px solid #1a252f;
+    border-bottom: 2px solid #0d0d0d;
 }
 
 .nav a {
@@ -33,11 +33,11 @@ body {
 
 .nav a:hover {
     border: 1px solid #fff;
-    background-color: #34495e;
+    background-color: #2a2a2a;
 }
 
 .nav span {
-    color: #ecf0f1;
+    color: #b0b0b0;
 }
 
 /* Container */
@@ -49,8 +49,8 @@ body {
 
 /* Cards */
 .card {
-    background-color: #fff;
-    border: 1px solid #ddd;
+    background-color: #2a2a2a;
+    border: 1px solid #3a3a3a;
     padding: 20px;
     margin-bottom: 20px;
 }
@@ -58,7 +58,7 @@ body {
 /* Headings */
 h1 {
     font-size: 28px;
-    color: #2c3e50;
+    color: #e0e0e0;
     margin-bottom: 20px;
     padding-bottom: 10px;
     border-bottom: 2px solid #3498db;
@@ -66,13 +66,13 @@ h1 {
 
 h2 {
     font-size: 22px;
-    color: #2c3e50;
+    color: #e0e0e0;
     margin-bottom: 15px;
 }
 
 h3 {
     font-size: 18px;
-    color: #2c3e50;
+    color: #e0e0e0;
     margin-bottom: 10px;
 }
 
@@ -85,7 +85,7 @@ label {
     display: block;
     margin-bottom: 5px;
     font-weight: bold;
-    color: #555;
+    color: #b0b0b0;
 }
 
 input[type="text"],
@@ -98,9 +98,11 @@ select {
     width: 100%;
     padding: 10px;
     margin-bottom: 15px;
-    border: 1px solid #ccc;
+    border: 1px solid #3a3a3a;
     font-size: 14px;
     font-family: Arial, sans-serif;
+    background-color: #1e1e1e;
+    color: #e0e0e0;
 }
 
 input[type="text"]:focus,
@@ -183,27 +185,27 @@ input[type="checkbox"] {
 }
 
 .message-success {
-    background-color: #d4edda;
-    color: #155724;
-    border-color: #c3e6cb;
+    background-color: #1a3a1a;
+    color: #90ee90;
+    border-color: #2d5a2d;
 }
 
 .message-error {
-    background-color: #f8d7da;
-    color: #721c24;
-    border-color: #f5c6cb;
+    background-color: #3a1a1a;
+    color: #ff6b6b;
+    border-color: #5a2d2d;
 }
 
 .message-warning {
-    background-color: #fff3cd;
-    color: #856404;
-    border-color: #ffeaa7;
+    background-color: #3a3a1a;
+    color: #ffd700;
+    border-color: #5a5a2d;
 }
 
 .message-info {
-    background-color: #d1ecf1;
-    color: #0c5460;
-    border-color: #bee5eb;
+    background-color: #1a2a3a;
+    color: #87ceeb;
+    border-color: #2d4a5a;
 }
 
 .message ul {
@@ -221,21 +223,21 @@ table th,
 table td {
     padding: 12px;
     text-align: left;
-    border: 1px solid #ddd;
+    border: 1px solid #3a3a3a;
 }
 
 table th {
-    background-color: #34495e;
+    background-color: #1e1e1e;
     color: #fff;
     font-weight: bold;
 }
 
 table tr:nth-child(even) {
-    background-color: #f9f9f9;
+    background-color: #2a2a2a;
 }
 
 table tr:hover {
-    background-color: #f0f0f0;
+    background-color: #333333;
 }
 
 /* Badges */
@@ -277,8 +279,8 @@ table tr:hover {
 }
 
 .stat-card {
-    background-color: #fff;
-    border: 1px solid #ddd;
+    background-color: #2a2a2a;
+    border: 1px solid #3a3a3a;
     padding: 20px;
     text-align: center;
 }
@@ -290,7 +292,7 @@ table tr:hover {
 }
 
 .stat-card p {
-    color: #7f8c8d;
+    color: #b0b0b0;
     font-size: 14px;
 }
 
@@ -303,14 +305,14 @@ table tr:hover {
 
 /* Question Block */
 .question-block {
-    background-color: #fff;
-    border: 1px solid #ddd;
+    background-color: #2a2a2a;
+    border: 1px solid #3a3a3a;
     padding: 20px;
     margin-bottom: 20px;
 }
 
 .question-text {
-    background-color: #f9f9f9;
+    background-color: #1e1e1e;
     padding: 15px;
     margin: 15px 0;
     border-left: 3px solid #3498db;
@@ -321,7 +323,7 @@ table tr:hover {
     position: fixed;
     top: 0;
     right: 0;
-    background-color: #2c3e50;
+    background-color: #1e1e1e;
     color: #fff;
     padding: 15px 25px;
     font-size: 18px;
@@ -345,15 +347,15 @@ table tr:hover {
 }
 
 .result-header.passed {
-    background-color: #d4edda;
+    background-color: #1a3a1a;
     border-color: #27ae60;
-    color: #155724;
+    color: #90ee90;
 }
 
 .result-header.failed {
-    background-color: #f8d7da;
+    background-color: #3a1a1a;
     border-color: #e74c3c;
-    color: #721c24;
+    color: #ff6b6b;
 }
 
 .result-score {
@@ -364,8 +366,8 @@ table tr:hover {
 
 /* Section */
 .section {
-    background-color: #fff;
-    border: 1px solid #ddd;
+    background-color: #2a2a2a;
+    border: 1px solid #3a3a3a;
     padding: 20px;
     margin-bottom: 20px;
 }
@@ -378,18 +380,18 @@ table tr:hover {
 
 /* Text Utilities */
 .text-muted {
-    color: #7f8c8d;
+    color: #808080;
 }
 
 small {
     display: block;
     margin-bottom: 10px;
-    color: #666;
+    color: #999;
 }
 
 hr {
     border: none;
-    border-top: 1px solid #ddd;
+    border-top: 1px solid #3a3a3a;
     margin: 20px 0;
 }
 

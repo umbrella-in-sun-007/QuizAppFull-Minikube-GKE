@@ -29,6 +29,11 @@
         {# Bootstrap CSS #}
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
 
+        {# Dark Mode CSS - Must load after Bootstrap #}
+        <link rel="stylesheet" type="text/css" href="{% static 'css/dark-mode.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'css/quizapp.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'css/header.css' %}">
+
         {% block extra_css %}
         {# Override this in templates to add extra stylesheets #}
         {% endblock %}
