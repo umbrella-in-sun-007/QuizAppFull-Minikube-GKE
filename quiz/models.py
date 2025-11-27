@@ -70,7 +70,7 @@ class Quiz(Page):
     
     # Security and monitoring settings
     monitor_tab_switching = models.BooleanField(
-        default=False,
+        default=True,
         help_text="Monitor and count tab switches during quiz"
     )
     max_tab_switches = models.IntegerField(
@@ -79,23 +79,23 @@ class Quiz(Page):
         help_text="Maximum allowed tab switches (0 = unlimited)"
     )
     auto_submit_on_violations = models.BooleanField(
-        default=False,
+        default=True,
         help_text="Automatically submit quiz when violation limit is reached"
     )
     enable_fullscreen = models.BooleanField(
-        default=False,
+        default=True,
         help_text="Require fullscreen mode during quiz"
     )
     disable_right_click = models.BooleanField(
-        default=False,
+        default=True,
         help_text="Disable right-click context menu during quiz"
     )
     disable_copy_paste = models.BooleanField(
-        default=False,
+        default=True,
         help_text="Disable copy and paste during quiz"
     )
     prevent_browser_back = models.BooleanField(
-        default=False,
+        default=True,
         help_text="Prevent using browser back button during quiz"
     )
     
@@ -127,15 +127,16 @@ class Quiz(Page):
             FieldPanel('start_date'),
             FieldPanel('end_date'),
         ], heading="Schedule"),
-        MultiFieldPanel([
-            FieldPanel('monitor_tab_switching'),
-            FieldPanel('max_tab_switches'),
-            FieldPanel('auto_submit_on_violations'),
-            FieldPanel('enable_fullscreen'),
-            FieldPanel('disable_right_click'),
-            FieldPanel('disable_copy_paste'),
-            FieldPanel('prevent_browser_back'),
-        ], heading="Security & Anti-Cheating"),
+        # Security settings are now mandatory and hidden from admin
+        # MultiFieldPanel([
+        #     FieldPanel('monitor_tab_switching'),
+        #     FieldPanel('max_tab_switches'),
+        #     FieldPanel('auto_submit_on_violations'),
+        #     FieldPanel('enable_fullscreen'),
+        #     FieldPanel('disable_right_click'),
+        #     FieldPanel('disable_copy_paste'),
+        #     FieldPanel('prevent_browser_back'),
+        # ], heading="Security & Anti-Cheating"),
         FieldPanel('tags'),
         InlinePanel('questions', label="Questions"),
     ]
@@ -149,6 +150,18 @@ class Quiz(Page):
 
     def __str__(self):
         return self.title
+
+    def clean(self):
+        """Validate quiz fields"""
+        super().clean()
+        from django.core.exceptions import ValidationError
+        
+        # Validate that end_date is after start_date
+        if self.start_date and self.end_date:
+            if self.end_date <= self.start_date:
+                raise ValidationError({
+                    'end_date': 'End date must be after start date.'
+                })
 
     def is_available(self):
         """Check if quiz is currently available"""
@@ -395,13 +408,18 @@ class QuizAttempt(models.Model):
 
     def calculate_score(self):
         """Calculate and save the score for this attempt"""
-        total_marks = 0
+        # Calculate total marks from all questions in the quiz
+        total_marks = sum(q.marks for q in self.quiz.questions.all())
         earned_marks = 0
 
-        for answer in self.answers.all():
-            question = answer.question
-            total_marks += question.marks
+        # Create a map of answers for easy lookup
+        student_answers = {a.question_id: a for a in self.answers.all()}
 
+        for question in self.quiz.questions.all():
+            if question.id not in student_answers:
+                continue
+                
+            answer = student_answers[question.id]
             # Check if answer is correct
             is_answer_correct = False
             
@@ -487,17 +505,11 @@ class StudentProfile(models.Model):
     Extended profile for students
     """
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='student_profile')
-    enrollment_number = models.CharField(max_length=50, unique=True, blank=True)
-    phone = models.CharField(max_length=15, blank=True)
-    date_of_birth = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     panels = [
         FieldPanel('user'),
-        FieldPanel('enrollment_number'),
-        FieldPanel('phone'),
-        FieldPanel('date_of_birth'),
         FieldPanel('is_active'),
     ]
 
@@ -506,7 +518,7 @@ class StudentProfile(models.Model):
         verbose_name_plural = "Student Profiles"
 
     def __str__(self):
-        return f"{self.user.get_full_name() or self.user.username}"
+        return f"{self.user.get_full_name() or self.user.email}"
 
     def get_quiz_statistics(self):
         """Get statistics for this student"""

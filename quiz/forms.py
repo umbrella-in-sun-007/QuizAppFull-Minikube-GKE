@@ -5,20 +5,27 @@ from .models import StudentProfile
 
 
 class StudentRegistrationForm(UserCreationForm):
-    email = forms.EmailField(required=True)
+    email = forms.EmailField(
+        required=True,
+        help_text="This will be used for login"
+    )
     first_name = forms.CharField(max_length=30, required=True)
     last_name = forms.CharField(max_length=30, required=True)
-    enrollment_number = forms.CharField(max_length=50, required=False)
-    phone = forms.CharField(max_length=15, required=False)
-    date_of_birth = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'password1', 'password2']
+        fields = ['email', 'first_name', 'last_name', 'password1', 'password2']
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError('This email address is already registered.')
+        return email
 
     def save(self, commit=True):
         user = super().save(commit=False)
         user.email = self.cleaned_data['email']
+        user.username = self.cleaned_data['email']  # Use email as username
         user.first_name = self.cleaned_data['first_name']
         user.last_name = self.cleaned_data['last_name']
         user.is_staff = False  # Students are not staff
@@ -30,17 +37,15 @@ class StudentRegistrationForm(UserCreationForm):
             user.groups.add(student_group)
             
             # Create student profile
-            StudentProfile.objects.create(
-                user=user,
-                enrollment_number=self.cleaned_data.get('enrollment_number', ''),
-                phone=self.cleaned_data.get('phone', ''),
-                date_of_birth=self.cleaned_data.get('date_of_birth')
-            )
+            StudentProfile.objects.create(user=user)
         return user
 
 
 class TeacherRegistrationForm(UserCreationForm):
-    email = forms.EmailField(required=True)
+    email = forms.EmailField(
+        required=True,
+        help_text="This will be used for login"
+    )
     first_name = forms.CharField(max_length=30, required=True)
     last_name = forms.CharField(max_length=30, required=True)
     employee_id = forms.CharField(max_length=50, required=False)
@@ -48,11 +53,18 @@ class TeacherRegistrationForm(UserCreationForm):
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'password1', 'password2']
+        fields = ['email', 'first_name', 'last_name', 'password1', 'password2']
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError('This email address is already registered.')
+        return email
 
     def save(self, commit=True):
         user = super().save(commit=False)
         user.email = self.cleaned_data['email']
+        user.username = self.cleaned_data['email']  # Use email as username
         user.first_name = self.cleaned_data['first_name']
         user.last_name = self.cleaned_data['last_name']
         user.is_staff = True  # Teachers are staff

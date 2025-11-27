@@ -1,0 +1,520 @@
+(function () {
+    "use strict";
+
+    console.log("Quiz JavaScript loaded successfully");
+
+    // Get configuration from data attributes
+    const quizApp = document.getElementById('quizApp');
+    if (!quizApp) {
+        console.error("Quiz app element not found!");
+        return;
+    }
+
+    const CONFIG = {
+        attemptId: quizApp.dataset.attempt,
+        security: {
+            monitorTabSwitching: quizApp.dataset.monitorTabSwitching === 'true',
+            maxTabSwitches: parseInt(quizApp.dataset.maxTabSwitches) || 0,
+            autoSubmitOnViolations: quizApp.dataset.autoSubmitOnViolations === 'true',
+            enableFullscreen: quizApp.dataset.enableFullscreen === 'true',
+            disableRightClick: quizApp.dataset.disableRightClick === 'true',
+            disableCopyPaste: quizApp.dataset.disableCopyPaste === 'true',
+            preventBrowserBack: quizApp.dataset.preventBrowserBack === 'true'
+        },
+        endpoints: {
+            questions: quizApp.dataset.questionsUrl,
+            status: quizApp.dataset.statusUrl,
+            questionBase: quizApp.dataset.questionBaseUrl,
+            answerBase: quizApp.dataset.answerBaseUrl,
+            finalize: quizApp.dataset.finalizeUrl,
+            getQuestionUrl: function (qid) {
+                return this.questionBase.replace('/0/', '/' + qid + '/');
+            },
+            getAnswerUrl: function (qid) {
+                return this.answerBase.replace('/0/', '/' + qid + '/');
+            }
+        }
+    };
+
+    console.log("Configuration loaded:", CONFIG);
+
+    // State management
+    const State = {
+        questionOrder: [],
+        currentIndex: 0,
+        answers: {},
+        remainingSeconds: 0,
+        lastServerSync: 0,
+        focusWarningCount: 0,
+        isProcessingWarning: false,
+        lastFocusTime: Date.now()
+    };
+
+    // DOM Elements
+    const DOM = {
+        navEl: document.getElementById('questionNav'),
+        panel: document.getElementById('questionPanel'),
+        prevBtn: document.getElementById('prevBtn'),
+        nextBtn: document.getElementById('nextBtn'),
+        clearBtn: document.getElementById('clearBtn'),
+        finalizeBtn: document.getElementById('finalizeBtn'),
+        timerEl: document.getElementById('timer'),
+        warningBadge: document.getElementById('warningBadge'),
+        warningCountEl: document.getElementById('warningCount')
+    };
+
+    // Utilities
+    const Utils = {
+        fetchJSON: function (url, options) {
+            return fetch(url, options).then(function (r) {
+                if (!r.ok) throw r;
+                return r.json();
+            });
+        },
+
+        csrf: function () {
+            const name = 'csrftoken';
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.startsWith(name + '=')) {
+                    return cookie.substring(name.length + 1);
+                }
+            }
+            return '';
+        },
+
+        formatTime: function (seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            return m + ':' + (s < 10 ? '0' : '') + s;
+        }
+    };
+
+    // Storage
+    const Storage = {
+        warningKey: 'quiz_warnings_' + CONFIG.attemptId,
+
+        loadWarnings: function () {
+            if (CONFIG.security.monitorTabSwitching) {
+                const stored = sessionStorage.getItem(Storage.warningKey);
+                if (stored) {
+                    State.focusWarningCount = parseInt(stored) || 0;
+                    if (State.focusWarningCount > 0) {
+                        UI.updateWarningDisplay();
+                    }
+                }
+            }
+        },
+
+        saveWarnings: function () {
+            sessionStorage.setItem(Storage.warningKey, State.focusWarningCount.toString());
+        },
+
+        clearWarnings: function () {
+            sessionStorage.removeItem(Storage.warningKey);
+        }
+    };
+
+    // UI Updates
+    const UI = {
+        updateNav: function () {
+            Array.from(DOM.navEl.children).forEach(function (btn, i) {
+                const qid = State.questionOrder[i].id;
+                const hasAnswer = State.answers[qid] && (
+                    (State.answers[qid].options || []).length ||
+                    (State.answers[qid].text || '').trim().length
+                );
+
+                btn.classList.remove('btn-current', 'btn-answered', 'btn-unanswered');
+
+                if (i === State.currentIndex) {
+                    btn.classList.add('btn-current');
+                } else if (hasAnswer) {
+                    btn.classList.add('btn-answered');
+                } else {
+                    btn.classList.add('btn-unanswered');
+                }
+            });
+
+            DOM.prevBtn.disabled = State.currentIndex === 0;
+            DOM.nextBtn.disabled = !State.questionOrder.length;
+            DOM.clearBtn.disabled = !State.questionOrder.length;
+            DOM.finalizeBtn.classList.toggle('d-none', State.currentIndex < State.questionOrder.length - 1);
+        },
+
+        updateWarningDisplay: function () {
+            if (!CONFIG.security.monitorTabSwitching || !DOM.warningCountEl) return;
+
+            DOM.warningCountEl.textContent = State.focusWarningCount;
+            if (State.focusWarningCount > 0) {
+                DOM.warningBadge.classList.remove('d-none');
+                if (State.focusWarningCount >= CONFIG.security.maxTabSwitches - 1) {
+                    DOM.warningBadge.classList.remove('bg-warning');
+                    DOM.warningBadge.classList.add('bg-danger', 'text-white');
+                }
+            } else {
+                DOM.warningBadge.classList.add('d-none');
+            }
+        },
+
+        displayTimer: function () {
+            DOM.timerEl.textContent = Utils.formatTime(State.remainingSeconds);
+            if (State.remainingSeconds <= 60) {
+                DOM.timerEl.parentElement.classList.add('timer-warning');
+            } else {
+                DOM.timerEl.parentElement.classList.remove('timer-warning');
+            }
+        },
+
+        renderQuestion: function (question) {
+            let html = '<div class="card"><div class="card-body">';
+            html += '<div class="d-flex justify-content-between align-items-start mb-3">';
+            html += '<h5 class="mb-0">Question ' + (State.currentIndex + 1) + '</h5>';
+            html += '<span class="badge bg-info">' + question.marks + ' marks</span>';
+            html += '</div>';
+            html += '<div class="mb-4">' + question.html + '</div>';
+
+            if (['single', 'multiple', 'true_false'].includes(question.type)) {
+                const selected = State.answers[question.id]?.options || [];
+                question.options.forEach(function (opt) {
+                    const inputType = question.type === 'multiple' ? 'checkbox' : 'radio';
+                    const checked = selected.includes(opt.id) ? 'checked' : '';
+                    const inputName = 'q_' + question.id + (inputType === 'checkbox' ? '[]' : '');
+
+                    html += '<div class="form-check mb-2 p-2 border rounded">';
+                    html += '<input class="form-check-input answer-opt me-2" data-q="' + question.id + '" ';
+                    html += 'type="' + inputType + '" value="' + opt.id + '" id="opt' + opt.id + '" ';
+                    html += checked + ' name="' + inputName + '">';
+                    html += '<label class="form-check-label w-100" for="opt' + opt.id + '">' + opt.text + '</label>';
+                    html += '</div>';
+                });
+            } else if (question.type === 'short_answer') {
+                const text = State.answers[question.id]?.text || '';
+                html += '<textarea class="form-control answer-text" data-q="' + question.id + '" ';
+                html += 'rows="5" placeholder="Type your answer here...">' + text + '</textarea>';
+            }
+
+            html += '</div></div>';
+            DOM.panel.innerHTML = html;
+        }
+    };
+
+    // Question Management
+    const Questions = {
+        load: function (index) {
+            State.currentIndex = index;
+            const qid = State.questionOrder[index].id;
+            const url = CONFIG.endpoints.getQuestionUrl(qid);
+
+            Utils.fetchJSON(url).then(function (data) {
+                if (!(qid in State.answers)) {
+                    State.answers[qid] = {
+                        options: data.selected_option_ids || [],
+                        text: data.text_answer || ''
+                    };
+                }
+                UI.renderQuestion(data.question);
+                UI.updateNav();
+            }).catch(function (err) {
+                console.error('Error loading question:', err);
+            });
+        },
+
+        saveCurrent: function () {
+            const question = State.questionOrder[State.currentIndex];
+            if (!question) return Promise.resolve();
+
+            const formData = new FormData();
+
+            if (['single', 'multiple', 'true_false'].includes(question.type)) {
+                const inputs = DOM.panel.querySelectorAll('.answer-opt');
+                const selected = [];
+                inputs.forEach(function (inp) {
+                    if (inp.checked) selected.push(inp.value);
+                });
+                State.answers[question.id].options = selected.map(function (x) { return parseInt(x); });
+                selected.forEach(function (v) { formData.append('option_ids[]', v); });
+            } else if (question.type === 'short_answer') {
+                const textarea = DOM.panel.querySelector('.answer-text');
+                State.answers[question.id].text = textarea.value;
+                formData.append('text_answer', textarea.value);
+            }
+
+            const url = CONFIG.endpoints.getAnswerUrl(question.id);
+            return Utils.fetchJSON(url, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': Utils.csrf() },
+                body: formData
+            }).catch(function () { });
+        },
+
+        finalize: function () {
+            if (!confirm('Are you sure you want to submit your quiz? You cannot change answers after submission.')) {
+                return;
+            }
+
+            Questions.saveCurrent().then(function () {
+                Utils.fetchJSON(CONFIG.endpoints.finalize, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': Utils.csrf() }
+                }).then(function (result) {
+                    if (result.redirect_url) {
+                        window.location = result.redirect_url;
+                    }
+                });
+            });
+        }
+    };
+
+    // Timer Management
+    const Timer = {
+        updateFromServer: function (status) {
+            State.remainingSeconds = status.remaining_seconds;
+            State.lastServerSync = Date.now();
+            UI.displayTimer();
+
+            if (status.remaining_seconds <= 0) {
+                Questions.saveCurrent().then(function () {
+                    Utils.fetchJSON(CONFIG.endpoints.finalize, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': Utils.csrf() }
+                    }).then(function (result) {
+                        if (result.redirect_url) {
+                            alert('Time has expired! Your quiz has been automatically submitted.');
+                            window.location = result.redirect_url;
+                        }
+                    });
+                });
+            }
+
+            if (status.completed) {
+                DOM.nextBtn.disabled = true;
+                DOM.prevBtn.disabled = true;
+                DOM.finalizeBtn.disabled = true;
+                DOM.clearBtn.disabled = true;
+            }
+        },
+
+        tick: function () {
+            if (State.remainingSeconds > 0) {
+                State.remainingSeconds--;
+                UI.displayTimer();
+            }
+        },
+
+        startSync: function () {
+            Utils.fetchJSON(CONFIG.endpoints.status).then(Timer.updateFromServer).catch(function () { });
+            setInterval(function () {
+                Utils.fetchJSON(CONFIG.endpoints.status).then(Timer.updateFromServer).catch(function () { });
+            }, 10000);
+            setInterval(Timer.tick, 1000);
+        }
+    };
+
+    // Security Features
+    const Security = {
+        handleFocusLoss: function (reason) {
+            if (!CONFIG.security.monitorTabSwitching) return Promise.resolve();
+            if (State.isProcessingWarning) return Promise.resolve();
+
+            const timeSinceFocus = Date.now() - State.lastFocusTime;
+            if (timeSinceFocus < 1000) return Promise.resolve();
+
+            State.isProcessingWarning = true;
+            State.focusWarningCount++;
+            Storage.saveWarnings();
+            UI.updateWarningDisplay();
+
+            if (State.focusWarningCount >= CONFIG.security.maxTabSwitches) {
+                // Always auto-submit when limit reached
+                const message = 'Warning #' + State.focusWarningCount + '\n\n' +
+                    'You have reached the maximum number of warnings.\n' +
+                    'Your quiz will be automatically submitted now.';
+
+                alert(message);
+                return Questions.saveCurrent().then(function () {
+                    return Utils.fetchJSON(CONFIG.endpoints.finalize, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': Utils.csrf() }
+                    }).then(function (result) {
+                        Storage.clearWarnings();
+                        if (result.redirect_url) {
+                            window.location = result.redirect_url;
+                        }
+                    });
+                }).finally(function () {
+                    State.isProcessingWarning = false;
+                });
+            } else {
+                const remaining = CONFIG.security.maxTabSwitches - State.focusWarningCount;
+                const message = 'Warning #' + State.focusWarningCount + ' of ' + CONFIG.security.maxTabSwitches + '\n\n' +
+                    reason + '\n\n' +
+                    'You have ' + remaining + ' warning' + (remaining > 1 ? 's' : '') + ' remaining.';
+                setupEventListeners: function () {
+                    console.log("=== SECURITY SETUP START ===");
+                    console.log("Security Configuration:", CONFIG.security);
+
+                    let enabledFeatures = [];
+
+                    // Tab switching monitor
+                    if (CONFIG.security.monitorTabSwitching) {
+                        console.log("Tab switching monitoring enabled");
+                        document.addEventListener('visibilitychange', function () {
+                            if (document.hidden) {
+                                State.lastFocusTime = Date.now();
+                                setTimeout(function () {
+                                    if (document.hidden) {
+                                        Security.handleFocusLoss('You switched to another tab or minimized the browser.');
+                                    }
+                                }, 1000);
+                            } else {
+                                State.lastFocusTime = Date.now();
+                            }
+                        });
+
+                        window.addEventListener('blur', function () {
+                            State.lastFocusTime = Date.now();
+                            setTimeout(function () {
+                                if (document.hasFocus && !document.hasFocus()) {
+                                    Security.handleFocusLoss('You clicked outside the quiz window.');
+                                }
+                            }, 1000);
+                        });
+
+                        window.addEventListener('focus', function () {
+                            State.lastFocusTime = Date.now();
+                            State.isProcessingWarning = false;
+                        });
+                    }
+
+                    // Right-click disable
+                    if (CONFIG.security.disableRightClick) {
+                        console.log("Right-click disabled");
+                        document.addEventListener('contextmenu', function (e) {
+                            e.preventDefault();
+                            alert('Right-click is disabled during the quiz.');
+                            return false;
+                        });
+                    }
+
+                    // Copy/paste disable
+                    if (CONFIG.security.disableCopyPaste) {
+                        console.log("Copy/paste disabled");
+                        document.addEventListener('copy', function (e) {
+                            e.preventDefault();
+                            alert('Copying is disabled during the quiz.');
+                        });
+                        document.addEventListener('paste', function (e) {
+                            e.preventDefault();
+                            alert('Pasting is disabled during the quiz.');
+                        });
+                        document.addEventListener('cut', function (e) {
+                            e.preventDefault();
+                            alert('Cutting is disabled during the quiz.');
+                        });
+                    }
+
+                    // Browser back prevention
+                    if (CONFIG.security.preventBrowserBack) {
+                        console.log("Browser back prevented");
+                        window.addEventListener('beforeunload', function (e) {
+                            e.preventDefault();
+                            e.returnValue = 'Are you sure you want to leave?';
+                            return 'Are you sure you want to leave?';
+                        });
+                    }
+
+                    // Always prevent dev tools shortcuts
+                    document.addEventListener('keydown', function (e) {
+                        if (e.keyCode === 123 ||
+                            (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) ||
+                            (e.ctrlKey && e.keyCode === 85)) {
+                            e.preventDefault();
+                            alert('This action is not allowed during the quiz.');
+                        }
+                    });
+                }
+            };
+
+            // Initialize App
+            const App = {
+                setupQuestionNav: function () {
+                    Utils.fetchJSON(CONFIG.endpoints.questions).then(function (data) {
+                        State.questionOrder = data.questions;
+                        DOM.navEl.innerHTML = '';
+
+                        State.questionOrder.forEach(function (q, i) {
+                            State.answers[q.id] = { options: [], text: '' };
+
+                            const col = document.createElement('div');
+                            col.className = 'col';
+
+                            const btn = document.createElement('button');
+                            btn.type = 'button';
+                            btn.className = 'btn question-btn btn-unanswered w-100';
+                            btn.textContent = i + 1;
+                            btn.addEventListener('click', function () {
+                                Questions.saveCurrent().then(function () { Questions.load(i); });
+                            });
+
+                            col.appendChild(btn);
+                            DOM.navEl.appendChild(col);
+                        });
+
+                        if (State.questionOrder.length) {
+                            Questions.load(0);
+                        }
+                    }).catch(function (err) {
+                        console.error('Error loading questions:', err);
+                    });
+                },
+
+                setupButtons: function () {
+                    DOM.nextBtn.addEventListener('click', function () {
+                        if (State.currentIndex < State.questionOrder.length - 1) {
+                            Questions.saveCurrent().then(function () { Questions.load(State.currentIndex + 1); });
+                        }
+                    });
+
+                    DOM.prevBtn.addEventListener('click', function () {
+                        if (State.currentIndex > 0) {
+                            Questions.saveCurrent().then(function () { Questions.load(State.currentIndex - 1); });
+                        }
+                    });
+
+                    DOM.clearBtn.addEventListener('click', function () {
+                        const q = State.questionOrder[State.currentIndex];
+                        if (!q) return;
+                        State.answers[q.id] = { options: [], text: '' };
+                        UI.renderQuestion(q);
+                        Questions.saveCurrent().then(UI.updateNav);
+                    });
+
+                    DOM.finalizeBtn.addEventListener('click', Questions.finalize);
+
+                    document.addEventListener('change', function (e) {
+                        if (e.target.classList.contains('answer-opt')) {
+                            UI.updateNav();
+                        }
+                    });
+                },
+
+                init: function () {
+                    console.log("Initializing quiz app...");
+                    Storage.loadWarnings();
+                    Timer.startSync();
+                    App.setupQuestionNav();
+                    App.setupButtons();
+                    Security.setupEventListeners();
+                    console.log("Quiz app initialized successfully!");
+                }
+            };
+
+            // Start when DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', App.init);
+            } else {
+                App.init();
+            }
+        })();

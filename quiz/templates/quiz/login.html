@@ -8,47 +8,48 @@
             <div class="card shadow">
                 <div class="card-body">
                     <h1 class="card-title text-center mb-4">Login</h1>
-                    
+
                     {% if messages %}
-                        {% for message in messages %}
-                        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                        {% endfor %}
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
                     {% endif %}
-                    
+
                     <form method="post">
                         {% csrf_token %}
-                        
+
                         <div class="mb-3">
-                            <label for="username" class="form-label">Username:</label>
-                            <input type="text" id="username" name="username" class="form-control" required>
+                            <label for="email" class="form-label">Email:</label>
+                            <input type="email" id="email" name="email" class="form-control" required>
                         </div>
-                        
+
                         <div class="mb-3">
                             <label for="password" class="form-label">Password:</label>
                             <input type="password" id="password" name="password" class="form-control" required>
                         </div>
-                        
+
                         <button type="submit" class="btn btn-primary w-100">Login</button>
                     </form>
-                    
+
                     <hr class="my-4">
-                    
+
                     <p class="text-center mb-3">
                         <strong>Don't have an account?</strong>
                     </p>
-                    
+
                     <div class="row g-2">
                         <div class="col-6">
                             <a href="{% url 'student_register' %}" class="btn btn-success w-100">Register as Student</a>
                         </div>
                         <div class="col-6">
-                            <a href="{% url 'teacher_register' %}" class="btn btn-outline-secondary w-100">Register as Teacher</a>
+                            <a href="{% url 'teacher_register' %}" class="btn btn-outline-secondary w-100">Register as
+                                Teacher</a>
                         </div>
                     </div>
-                    
+
                     <p class="text-center mt-3">
                         <a href="/" class="text-decoration-none">Back to Home</a>
                     </p>

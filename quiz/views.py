@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
 from django.contrib import messages
 from django.http import JsonResponse
 from django.utils import timezone
@@ -61,13 +62,19 @@ def student_login(request):
         return redirect('quiz_list')
     
     if request.method == 'POST':
-        username = request.POST.get('username')
+        email = request.POST.get('email')
         password = request.POST.get('password')
-        user = authenticate(request, username=username, password=password)
+        
+        # Try to get user by email
+        try:
+            user_obj = User.objects.get(email=email)
+            user = authenticate(request, username=user_obj.username, password=password)
+        except User.DoesNotExist:
+            user = None
         
         if user is not None:
             login(request, user)
-            messages.success(request, f'Welcome back, {user.get_full_name() or user.username}!')
+            messages.success(request, f'Welcome back, {user.get_full_name() or user.email}!')
             
             # Redirect based on user role
             if user.is_staff:
@@ -75,7 +82,7 @@ def student_login(request):
             else:
                 return redirect('quiz_list')
         else:
-            messages.error(request, 'Invalid username or password.')
+            messages.error(request, 'Invalid email or password.')
     
     return render(request, 'quiz/login.html')
 
@@ -252,6 +259,15 @@ def take_quiz(request, attempt_id):
         'quiz': quiz,
         'questions': questions,
         'time_remaining_seconds': int(time_remaining),
+        # Security settings
+        # Security settings - Always enforced
+        'monitor_tab_switching': True,
+        'max_tab_switches': quiz.max_tab_switches if quiz.max_tab_switches > 0 else 3,
+        'auto_submit_on_violations': True,
+        'enable_fullscreen': True,
+        'disable_right_click': True,
+        'disable_copy_paste': True,
+        'prevent_browser_back': True,
     }
     return render(request, 'quiz/take_quiz.html', context)
 
@@ -263,7 +279,7 @@ def _serialize_option(option):
         'text': option.option_text,
     }
 
-def _serialize_question(question, include_options=True):
+def _serialize_question(question, include_options=True, shuffle_seed=None):
     data = {
         'id': question.id,
         'type': question.question_type,
@@ -273,14 +289,21 @@ def _serialize_question(question, include_options=True):
     }
     if include_options and question.question_type in ['single','multiple','true_false']:
         opts = list(question.options.all())
+        if question.quiz.shuffle_options:
+            if shuffle_seed is not None:
+                random.Random(shuffle_seed).shuffle(opts)
+            else:
+                random.shuffle(opts)
         data['options'] = [_serialize_option(o) for o in opts]
     return data
 
-def _ensure_question_order(session, attempt, questions):
+def _ensure_question_order(session, attempt, questions, shuffle=False):
     key = f"attempt_{attempt.id}_order"
     if key not in session:
-        order = [q.id for q in questions]
-        session[key] = order
+        q_ids = [q.id for q in questions]
+        if shuffle:
+            random.shuffle(q_ids)
+        session[key] = q_ids
         session.modified = True
     return session[key]
 
@@ -292,7 +315,7 @@ def api_attempt_questions(request, attempt_id):
     base_qs = list(quiz.questions.all())
     if quiz.randomize_questions:
         # deterministic per session: shuffle copy only on first retrieval
-        _ensure_question_order(request.session, attempt, base_qs)
+        _ensure_question_order(request.session, attempt, base_qs, shuffle=True)
         ordered_ids = request.session.get(f"attempt_{attempt.id}_order")
         id_to_q = {q.id: q for q in base_qs}
         questions = [id_to_q[i] for i in ordered_ids if i in id_to_q]
@@ -330,7 +353,7 @@ def api_attempt_question(request, attempt_id, question_id):
         selected = list(answer.selected_options.values_list('id', flat=True))
         text_answer = answer.text_answer
     return JsonResponse({
-        'question': _serialize_question(question, include_options=True),
+        'question': _serialize_question(question, include_options=True, shuffle_seed=f"{attempt.id}_{question.id}"),
         'selected_option_ids': selected,
         'text_answer': text_answer,
     })

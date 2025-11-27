@@ -1,0 +1,478 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  #questionNav .question-btn {
+    min-width: 50px;
+    height: 50px;
+  }
+
+  #questionNav .btn-answered {
+    background-color: #198754;
+    border-color: #198754;
+    color: white;
+  }
+
+  #questionNav .btn-current {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+  }
+
+  #questionNav .btn-unanswered {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+  }
+
+  .timer-warning {
+    animation: pulse 1s infinite;
+  }
+
+  @keyframes pulse {
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.6;
+    }
+  }
+
+  .nav-card {
+    position: sticky;
+    top: 20px;
+  }
+
+  #quizApp {
+    min-height: 80vh;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+  }
+
+  .legend-box {
+    width: 20px;
+    height: 20px;
+    border: 2px solid;
+  }
+</style>
+
+{% if enable_fullscreen %}
+<!-- Fullscreen Modal -->
+<div class="modal fade" id="fullscreenModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-fullscreen"></i> Fullscreen Required</h5>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3">For a fair exam environment, this quiz must be taken in fullscreen mode.</p>
+        <ul class="mb-0">
+          <li>You cannot exit fullscreen during the quiz</li>
+          {% if monitor_tab_switching %}
+          <li>Switching tabs or windows will trigger warnings</li>
+          <li>After {{ max_tab_switches }} warning{{ max_tab_switches|pluralize }}, your quiz will be {{
+            auto_submit_on_violations|yesno:"auto-submitted,flagged" }}</li>
+          {% endif %}
+        </ul>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="fullscreenBtn">Enter Fullscreen</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if monitor_tab_switching %}
+<!-- Focus Warning Modal -->
+<div class="modal fade" id="focusWarningModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-warning">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill"></i> Warning</h5>
+      </div>
+      <div class="modal-body" id="focusWarningModalBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-warning" id="focusWarningBtn">I Understand</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="container-fluid my-4" id="quizApp" data-attempt="{{ attempt.id }}">
+  <div class="row g-4">
+    <div class="col-lg-3">
+      <div class="card nav-card">
+        <div class="card-header bg-primary text-white">
+          <div class="d-flex justify-content-between align-items-center">
+            <span>Questions</span>
+            <div class="d-flex gap-2 align-items-center">
+              {% if monitor_tab_switching %}
+              <span class="badge bg-warning text-dark d-none" id="warningBadge" title="Warnings issued">
+                <span id="warningCount">0</span>/{{ max_tab_switches }}
+              </span>
+              {% endif %}
+              <span class="badge bg-dark" id="timer">--:--</span>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row row-cols-4 g-2" id="questionNav"></div>
+          <hr class="my-3">
+          <div class="d-flex flex-column gap-2">
+            <div class="legend-item">
+              <div class="legend-box bg-primary" style="border-color: #0d6efd;"></div>
+              <span>Current</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-box bg-success" style="border-color: #198754;"></div>
+              <span>Answered</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-box bg-secondary" style="border-color: #6c757d;"></div>
+              <span>Not Answered</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-9">
+      <div id="questionPanel" class="mb-3"></div>
+      <hr class="my-4">
+      <div class="d-flex justify-content-between align-items-center">
+        <button class="btn btn-secondary" id="prevBtn" disabled>Previous</button>
+        <div class="d-flex gap-2">
+          <button class="btn btn-warning" id="clearBtn" disabled>Clear</button>
+          <button class="btn btn-primary" id="nextBtn" disabled>Next</button>
+          <button class="btn btn-success d-none" id="finalizeBtn">Submit Quiz</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  (function () {
+    // Security settings from server
+    const SECURITY = {
+      monitorTabSwitching: {{ monitor_tab_switching| yesno: "true,false"
+  }},
+  maxTabSwitches: { { max_tab_switches |default: 0 } },
+  autoSubmitOnViolations: { { auto_submit_on_violations | yesno: "true,false" } },
+  enableFullscreen: { { enable_fullscreen | yesno: "true,false" } },
+  disableRightClick: { { disable_right_click | yesno: "true,false" } },
+  disableCopyPaste: { { disable_copy_paste | yesno: "true,false" } },
+  preventBrowserBack: { { prevent_browser_back | yesno: "true,false" } }
+    };
+
+  const endpoints = {
+    questions: "{% url 'api_attempt_questions' attempt.id %}",
+    status: "{% url 'api_attempt_status' attempt.id %}",
+    question: (qid) => "{% url 'api_attempt_question' attempt.id 0 %}".replace('/0/', '/' + qid + '/'),
+    answer: (qid) => "{% url 'api_save_answer' attempt.id 0 %}".replace('/0/', '/' + qid + '/'),
+    finalize: "{% url 'api_finalize_attempt' attempt.id %}"
+  };
+  let questionOrder = []; let currentIndex = 0; const answers = {};
+  const navEl = document.getElementById('questionNav');
+  const panel = document.getElementById('questionPanel');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const finalizeBtn = document.getElementById('finalizeBtn');
+  const timerEl = document.getElementById('timer');
+  let focusWarningCount = 0; let isProcessingWarning = false; let lastFocusTime = Date.now();
+  let fullscreenModal, focusWarningModal;
+  let remainingSeconds = 0; let lastServerSync = 0;
+  const warningBadge = document.getElementById('warningBadge');
+  const warningCountEl = document.getElementById('warningCount');
+
+  // Load warning count from sessionStorage
+  const attemptId = document.getElementById('quizApp').dataset.attempt;
+  const warningKey = 'quiz_warnings_' + attemptId;
+  if (SECURITY.monitorTabSwitching) {
+    const storedWarnings = sessionStorage.getItem(warningKey);
+    if (storedWarnings) {
+      focusWarningCount = parseInt(storedWarnings) || 0;
+      if (focusWarningCount > 0) {
+        updateWarningDisplay();
+      }
+    }
+  }
+
+  function updateWarningDisplay() {
+    if (!SECURITY.monitorTabSwitching || !warningCountEl) return;
+    warningCountEl.textContent = focusWarningCount;
+    if (focusWarningCount > 0) {
+      warningBadge.classList.remove('d-none');
+      if (focusWarningCount >= SECURITY.maxTabSwitches - 1) {
+        warningBadge.classList.remove('bg-warning');
+        warningBadge.classList.add('bg-danger', 'text-white');
+      }
+    } else {
+      warningBadge.classList.add('d-none');
+    }
+  }
+
+  function fetchJSON(u, o) { return fetch(u, o).then(r => { if (!r.ok) throw r; return r.json(); }); }
+  function csrf() { const n = 'csrftoken'; return document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith(n + '='))?.split('=')[1] || ''; }
+  function updateNav() {
+    Array.from(navEl.children).forEach((b, i) => {
+      const qid = questionOrder[i].id;
+      const has = answers[qid] && ((answers[qid].options || []).length || (answers[qid].text || '').trim().length);
+
+      b.classList.remove('btn-current', 'btn-answered', 'btn-unanswered');
+
+      if (i === currentIndex) {
+        b.classList.add('btn-current');
+      } else if (has) {
+        b.classList.add('btn-answered');
+      } else {
+        b.classList.add('btn-unanswered');
+      }
+    });
+    prevBtn.disabled = currentIndex === 0;
+    nextBtn.disabled = !questionOrder.length;
+    clearBtn.disabled = !questionOrder.length;
+    finalizeBtn.classList.toggle('d-none', currentIndex < questionOrder.length - 1);
+  }
+  function renderQuestion(q) { let html = '<div class="card"><div class="card-body"><div class="d-flex justify-content-between align-items-start mb-3"><h5 class="mb-0">Question ' + (currentIndex + 1) + '</h5><span class="badge bg-info">' + q.marks + ' marks</span></div><div class="mb-4">' + q.html + '</div>'; if (['single', 'multiple', 'true_false'].includes(q.type)) { const sel = (answers[q.id]?.options) || []; q.options.forEach(opt => { const t = q.type === 'multiple' ? 'checkbox' : 'radio'; const chk = sel.includes(opt.id) ? 'checked' : ''; html += '<div class="form-check mb-2 p-2 border rounded"><input class="form-check-input answer-opt me-2" data-q="' + q.id + '" type="' + t + '" value="' + opt.id + '" id="opt' + opt.id + '" ' + chk + ' name="q_' + q.id + (t === 'checkbox' ? '[]' : '') + '"><label class="form-check-label w-100" for="opt' + opt.id + '">' + opt.text + '</label></div>'; }); } else if (q.type === 'short_answer') { const txt = answers[q.id]?.text || ''; html += '<textarea class="form-control answer-text" data-q="' + q.id + '" rows="5" placeholder="Type your answer here...">' + txt + '</textarea>'; } html += '</div></div>'; panel.innerHTML = html; }
+  function loadQuestion(i) { currentIndex = i; const qid = questionOrder[i].id; fetchJSON(endpoints.question(qid)).then(d => { if (!(qid in answers)) answers[qid] = { options: d.selected_option_ids, text: d.text_answer }; renderQuestion(d.question); updateNav(); }); }
+  function saveCurrent() { const q = questionOrder[currentIndex]; if (!q) return Promise.resolve(); const fd = new FormData(); if (['single', 'multiple', 'true_false'].includes(q.type)) { const inputs = panel.querySelectorAll('.answer-opt'); const sel = []; inputs.forEach(inp => { if (inp.checked) sel.push(inp.value); }); answers[q.id].options = sel.map(x => parseInt(x)); sel.forEach(v => fd.append('option_ids[]', v)); } else if (q.type === 'short_answer') { const ta = panel.querySelector('.answer-text'); answers[q.id].text = ta.value; fd.append('text_answer', ta.value); } return fetchJSON(endpoints.answer(q.id), { method: 'POST', headers: { 'X-CSRFToken': csrf() }, body: fd }).catch(() => { }); }
+  function init() {
+    fetchJSON(endpoints.status).then(s => {
+      updateTimerFromServer(s);
+    }).catch(() => { });
+
+    fetchJSON(endpoints.questions).then(d => {
+      questionOrder = d.questions;
+      navEl.innerHTML = '';
+      questionOrder.forEach((q, i) => {
+        answers[q.id] = { options: [], text: '' };
+        const col = document.createElement('div');
+        col.className = 'col';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn question-btn btn-unanswered w-100';
+        btn.textContent = i + 1;
+        btn.addEventListener('click', () => { saveCurrent().then(() => loadQuestion(i)); });
+        col.appendChild(btn);
+        navEl.appendChild(col);
+      });
+      if (questionOrder.length) loadQuestion(0);
+    });
+
+    setInterval(() => {
+      fetchJSON(endpoints.status).then(s => {
+        updateTimerFromServer(s);
+      }).catch(() => { });
+    }, 10000);
+
+    setInterval(() => {
+      if (remainingSeconds > 0) {
+        remainingSeconds--;
+        displayTimer();
+      }
+    }, 1000);
+  }
+
+  function updateTimerFromServer(s) {
+    remainingSeconds = s.remaining_seconds;
+    lastServerSync = Date.now();
+    displayTimer();
+
+    if (s.remaining_seconds <= 0) {
+      saveCurrent().then(() => {
+        fetchJSON(endpoints.finalize, { method: 'POST', headers: { 'X-CSRFToken': csrf() } }).then(r => {
+          if (r.redirect_url) {
+            alert('Time has expired! Your quiz has been automatically submitted.');
+            window.location = r.redirect_url;
+          }
+        });
+      });
+    }
+    if (s.completed) {
+      nextBtn.disabled = prevBtn.disabled = true;
+      finalizeBtn.disabled = true;
+      clearBtn.disabled = true;
+    }
+  }
+
+  function displayTimer() {
+    const m = Math.floor(remainingSeconds / 60);
+    const sec = remainingSeconds % 60;
+    timerEl.textContent = m + ':' + (sec < 10 ? '0' : '') + sec;
+    if (remainingSeconds <= 60) {
+      timerEl.parentElement.classList.add('timer-warning');
+    } else {
+      timerEl.parentElement.classList.remove('timer-warning');
+    }
+  }
+
+  // Anti-cheating functions
+  function enterFullscreen() {
+    if (!SECURITY.enableFullscreen) return;
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen().catch(() => { });
+    } else if (elem.webkitRequestFullscreen) {
+      elem.webkitRequestFullscreen();
+    } else if (elem.msRequestFullscreen) {
+      elem.msRequestFullscreen();
+    }
+  }
+
+  function showFocusWarning(msg) {
+    if (!SECURITY.monitorTabSwitching) return Promise.resolve();
+    return new Promise((resolve) => {
+      if (focusWarningModal) {
+        document.getElementById('focusWarningModalBody').innerHTML = msg;
+        const btn = document.getElementById('focusWarningBtn');
+        const handleClick = () => {
+          btn.removeEventListener('click', handleClick);
+          focusWarningModal.hide();
+          resolve();
+        };
+        btn.addEventListener('click', handleClick);
+        focusWarningModal.show();
+      } else {
+        resolve();
+      }
+    });
+  }
+
+  async function handleFocusLoss(reason) {
+    if (!SECURITY.monitorTabSwitching) return;
+    if (isProcessingWarning) return;
+    const timeSinceFocus = Date.now() - lastFocusTime;
+    if (timeSinceFocus < 1000) return;
+    isProcessingWarning = true;
+    focusWarningCount++;
+    sessionStorage.setItem(warningKey, focusWarningCount.toString());
+    updateWarningDisplay();
+
+    if (focusWarningCount >= SECURITY.maxTabSwitches) {
+      if (SECURITY.autoSubmitOnViolations) {
+        await showFocusWarning('<strong>Final Warning #' + focusWarningCount + '</strong><br><br>You have reached the maximum number of warnings. Your quiz will be automatically submitted now.');
+        saveCurrent().then(() => fetchJSON(endpoints.finalize, { method: 'POST', headers: { 'X-CSRFToken': csrf() } }).then(r => {
+          sessionStorage.removeItem(warningKey);
+          if (r.redirect_url) window.location = r.redirect_url;
+        }));
+      } else {
+        await showFocusWarning('<strong>Final Warning #' + focusWarningCount + '</strong><br><br>' + reason + '<br><br>Maximum warnings reached. This attempt has been flagged.');
+      }
+    } else {
+      const remaining = SECURITY.maxTabSwitches - focusWarningCount;
+      await showFocusWarning('<strong>Warning #' + focusWarningCount + ' of ' + SECURITY.maxTabSwitches + '</strong><br><br>' + reason + '<br><br>You have <strong>' + remaining + '</strong> warning' + (remaining > 1 ? 's' : '') + ' remaining.');
+      if (SECURITY.enableFullscreen) enterFullscreen();
+    }
+    isProcessingWarning = false;
+  }
+
+  // Event listeners
+  nextBtn.addEventListener('click', () => { if (currentIndex < questionOrder.length - 1) { saveCurrent().then(() => loadQuestion(currentIndex + 1)); } });
+  prevBtn.addEventListener('click', () => { if (currentIndex > 0) { saveCurrent().then(() => loadQuestion(currentIndex - 1)); } });
+  clearBtn.addEventListener('click', () => { const q = questionOrder[currentIndex]; if (!q) return; answers[q.id] = { options: [], text: '' }; renderQuestion(q); saveCurrent().then(updateNav); });
+  finalizeBtn.addEventListener('click', () => { if (confirm('Are you sure you want to submit your quiz? You cannot change answers after submission.')) { saveCurrent().then(() => fetchJSON(endpoints.finalize, { method: 'POST', headers: { 'X-CSRFToken': csrf() } }).then(r => { if (r.redirect_url) window.location = r.redirect_url; })); } });
+  document.addEventListener('change', e => { if (e.target.classList.contains('answer-opt')) updateNav(); });
+
+  // Conditional anti-cheating monitoring
+  if (SECURITY.monitorTabSwitching) {
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        lastFocusTime = Date.now();
+        setTimeout(() => {
+          if (document.hidden) {
+            handleFocusLoss('You switched to another tab or minimized the browser.');
+          }
+        }, 1000);
+      } else {
+        lastFocusTime = Date.now();
+      }
+    });
+    window.addEventListener('blur', () => {
+      lastFocusTime = Date.now();
+      setTimeout(() => {
+        if (document.hasFocus && !document.hasFocus()) {
+          handleFocusLoss('You clicked outside the quiz window.');
+        }
+      }, 1000);
+    });
+    window.addEventListener('focus', () => { lastFocusTime = Date.now(); isProcessingWarning = false; });
+  }
+
+  if (SECURITY.enableFullscreen) {
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement) {
+        handleFocusLoss('You exited fullscreen mode.').then(() => enterFullscreen());
+      }
+    });
+    document.addEventListener('webkitfullscreenchange', () => {
+      if (!document.webkitFullscreenElement) {
+        handleFocusLoss('You exited fullscreen mode.').then(() => enterFullscreen());
+      }
+    });
+  }
+
+  if (SECURITY.disableRightClick) {
+    document.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      alert('Right-click is disabled during the quiz.');
+    });
+  }
+
+  if (SECURITY.disableCopyPaste) {
+    document.addEventListener('copy', e => {
+      e.preventDefault();
+      alert('Copying is disabled during the quiz.');
+    });
+    document.addEventListener('paste', e => {
+      e.preventDefault();
+      alert('Pasting is disabled during the quiz.');
+    });
+    document.addEventListener('cut', e => {
+      e.preventDefault();
+      alert('Cutting is disabled during the quiz.');
+    });
+  }
+
+  // Always prevent F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U (common dev tools shortcuts)
+  document.addEventListener('keydown', e => {
+    if (e.keyCode === 123 || (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) || (e.ctrlKey && e.keyCode === 85)) {
+      e.preventDefault();
+      alert('This action is not allowed during the quiz.');
+    }
+  });
+
+  if (SECURITY.preventBrowserBack) {
+    window.addEventListener('beforeunload', e => {
+      e.preventDefault();
+      e.returnValue = 'Are you sure you want to leave?';
+      return 'Are you sure you want to leave?';
+    });
+  }
+
+  // Initialize
+  document.addEventListener('DOMContentLoaded', () => {
+    if (SECURITY.enableFullscreen) {
+      fullscreenModal = new bootstrap.Modal(document.getElementById('fullscreenModal'));
+      fullscreenModal.show();
+      document.getElementById('fullscreenBtn').addEventListener('click', () => {
+        fullscreenModal.hide();
+        enterFullscreen();
+      });
+    }
+    if (SECURITY.monitorTabSwitching) {
+      focusWarningModal = new bootstrap.Modal(document.getElementById('focusWarningModal'));
+    }
+  });
+  init();
+}) ();
+</script>
+{% endblock %}
