@@ -405,6 +405,49 @@
         },
 
         // centralized warning recorder with dedupe and auto-submit handling
+        handleViolationLimit: function () {
+            const message = 'You have reached the maximum number of warnings.';
+
+            if (CONFIG.security.autoSubmitOnViolations) {
+                // auto-submit
+                State.isSubmitting = true;
+
+                // Show modal for auto-submit
+                if (State.modalInstance) {
+                    DOM.warningMessage.textContent = message + " Your quiz is being submitted automatically.";
+                    DOM.warningFooter.classList.add('d-none'); // Hide remaining count
+                    DOM.ackWarningBtn.classList.add('d-none'); // Hide ack button
+                    State.modalInstance.show();
+                }
+
+                return Questions.saveCurrent().then(function () {
+                    return Utils.fetchJSON(CONFIG.endpoints.finalize, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': Utils.csrf() }
+                    }).then(function (result) {
+                        Storage.clearWarnings();
+                        if (result.redirect_url) {
+                            window.location = result.redirect_url;
+                        }
+                    }).catch(function (err) {
+                        console.error('Finalize error:', err);
+                    });
+                });
+            } else {
+                // just warn user, do not auto-submit
+                // Show modal
+                if (State.modalInstance) {
+                    DOM.warningMessage.textContent = message + " No automatic submission is configured.";
+                    DOM.remainingWarnings.textContent = "0";
+                    DOM.warningFooter.classList.remove('d-none');
+                    DOM.ackWarningBtn.classList.remove('d-none');
+                    State.modalInstance.show();
+                }
+                return Promise.resolve();
+            }
+        },
+
+        // centralized warning recorder with dedupe and auto-submit handling
         recordWarning: function (reason) {
             if (State.isSubmitting) return Promise.resolve();
 
@@ -431,46 +474,7 @@
 
             // If maxTabSwitches is <= 0 treat as unlimited (no auto-submit)
             if (CONFIG.security.maxTabSwitches > 0 && State.focusWarningCount >= CONFIG.security.maxTabSwitches) {
-                // reached or exceeded limit
-                const message = 'You have reached the maximum number of warnings.';
-
-                if (CONFIG.security.autoSubmitOnViolations) {
-                    // auto-submit
-                    State.isSubmitting = true;
-
-                    // Show modal for auto-submit
-                    if (State.modalInstance) {
-                        DOM.warningMessage.textContent = message + " Your quiz is being submitted automatically.";
-                        DOM.warningFooter.classList.add('d-none'); // Hide remaining count
-                        DOM.ackWarningBtn.classList.add('d-none'); // Hide ack button
-                        State.modalInstance.show();
-                    }
-
-                    return Questions.saveCurrent().then(function () {
-                        return Utils.fetchJSON(CONFIG.endpoints.finalize, {
-                            method: 'POST',
-                            headers: { 'X-CSRFToken': Utils.csrf() }
-                        }).then(function (result) {
-                            Storage.clearWarnings();
-                            if (result.redirect_url) {
-                                window.location = result.redirect_url;
-                            }
-                        }).catch(function (err) {
-                            console.error('Finalize error:', err);
-                        });
-                    });
-                } else {
-                    // just warn user, do not auto-submit
-                    // Show modal
-                    if (State.modalInstance) {
-                        DOM.warningMessage.textContent = message + " No automatic submission is configured.";
-                        DOM.remainingWarnings.textContent = "0";
-                        DOM.warningFooter.classList.remove('d-none');
-                        DOM.ackWarningBtn.classList.remove('d-none');
-                        State.modalInstance.show();
-                    }
-                    return Promise.resolve();
-                }
+                return Security.handleViolationLimit();
             } else {
                 // normal warning — show modal
                 const remaining = CONFIG.security.maxTabSwitches > 0 ? (CONFIG.security.maxTabSwitches - State.focusWarningCount) : '∞';
@@ -599,6 +603,13 @@
                 });
             }
 
+            // Detect page refresh or navigation
+            window.addEventListener('beforeunload', function () {
+                if (!State.isSubmitting) {
+                    Security.recordWarning('You refreshed the page or navigated away.');
+                }
+            });
+
             // Browser back prevention
             if (CONFIG.security.preventBrowserBack) {
                 console.log("Browser back prevented");
@@ -716,6 +727,9 @@
             }
 
             Storage.loadWarnings();
+            if (CONFIG.security.maxTabSwitches > 0 && State.focusWarningCount >= CONFIG.security.maxTabSwitches) {
+                Security.handleViolationLimit();
+            }
             Timer.startSync();
             App.setupQuestionNav();
             App.setupButtons();

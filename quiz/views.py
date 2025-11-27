@@ -403,7 +403,12 @@ def api_save_answer(request, attempt_id, question_id):
 def api_finalize_attempt(request, attempt_id):
     attempt = get_object_or_404(QuizAttempt, id=attempt_id, student=request.user)
     if attempt.is_completed:
-        return JsonResponse({'already_completed': True, 'score': float(attempt.score or 0), 'percentage': float(attempt.percentage or 0)})
+        return JsonResponse({
+            'already_completed': True, 
+            'score': float(attempt.score or 0), 
+            'percentage': float(attempt.percentage or 0),
+            'redirect_url': redirect('quiz_result', attempt_id=attempt.id).url
+        })
     result = attempt.calculate_score()
     return JsonResponse({
         'completed': True,
