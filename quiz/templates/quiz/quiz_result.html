@@ -2,13 +2,14 @@
 
 {% block content %}
 <div class="container my-4">
+    {% if show_answers %}
     <div class="alert {% if attempt.is_passed %}alert-success{% else %}alert-danger{% endif %} text-center py-4">
         <h1 class="display-4 mb-3">{% if attempt.is_passed %}PASSED{% else %}FAILED{% endif %}</h1>
         <div class="display-1 fw-bold mb-3">{{ attempt.percentage|floatformat:1 }}%</div>
         <p class="mb-2">You scored {{ attempt.score }} out of {{ quiz.get_total_marks }} marks</p>
         <p class="mb-0">Pass mark: {{ quiz.pass_percentage }}%</p>
     </div>
-    
+
     <div class="row g-4 mb-4">
         <div class="col-md-4">
             <div class="card text-center h-100">
@@ -35,20 +36,28 @@
             </div>
         </div>
     </div>
-    
+    {% else %}
+    <div class="alert alert-success text-center py-5">
+        <h1 class="display-4 mb-3">Quiz Completed!</h1>
+        <p class="lead mb-4">Thank you for completing the quiz. Your responses have been recorded.</p>
+        <hr>
+        <p class="mb-0">Please contact your teacher or administrator to view your results and marks.</p>
+    </div>
+    {% endif %}
+
     <div class="card mb-4">
         <div class="card-body">
             <p><strong>Quiz:</strong> {{ quiz.title }}</p>
-            <p><strong>Started:</strong> {{ attempt.start_time|date:"M d, Y H:i" }}</p>
-            <p><strong>Completed:</strong> {{ attempt.end_time|date:"M d, Y H:i" }}</p>
-            
+            <p><strong>Started:</strong> {{ attempt.start_time|date:"M d, Y H:i:s" }}</p>
+            <p><strong>Completed:</strong> {{ attempt.end_time|date:"M d, Y H:i:s" }}</p>
+
             <div class="d-flex gap-2 flex-wrap">
                 <a href="{% url 'quiz_list' %}" class="btn btn-primary">Back to Quizzes</a>
                 <a href="{% url 'student_dashboard' %}" class="btn btn-outline-secondary">View Dashboard</a>
             </div>
         </div>
     </div>
-    
+
     {% if show_answers %}
     <div class="card">
         <div class="card-header">
@@ -56,46 +65,47 @@
         </div>
         <div class="card-body">
             {% for answer_data in answers %}
-            <div class="card mb-3 border-start border-3 {% if answer_data.is_correct %}border-success{% else %}border-danger{% endif %}">
+            <div
+                class="card mb-3 border-start border-3 {% if answer_data.is_correct %}border-success{% else %}border-danger{% endif %}">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start mb-3">
                         <h6 class="card-title">Question {{ forloop.counter }}</h6>
                         {% if answer_data.is_correct %}
-                            <span class="badge bg-success">Correct</span>
+                        <span class="badge bg-success">Correct</span>
                         {% else %}
-                            <span class="badge bg-danger">Incorrect</span>
+                        <span class="badge bg-danger">Incorrect</span>
                         {% endif %}
                     </div>
-                    
+
                     <div class="alert alert-dark border-start border-primary border-3 mb-3">
                         {{ answer_data.question.question_text|safe }}
                     </div>
-                    
+
                     {% if answer_data.question.question_type != 'short_answer' %}
-                        <div class="mb-3">
-                            <strong>Your Answer:</strong>
-                            {% for option in answer_data.selected_options %}
-                                <div class="mt-1">{{ option.option_text }}</div>
-                            {% empty %}
-                                <div class="text-muted mt-1">No answer selected</div>
-                            {% endfor %}
-                        </div>
-                        
-                        <div class="mb-3">
-                            <strong>Correct Answer:</strong>
-                            {% for option in answer_data.correct_options %}
-                                <div class="text-success mt-1">{{ option.option_text }}</div>
-                            {% endfor %}
-                        </div>
+                    <div class="mb-3">
+                        <strong>Your Answer:</strong>
+                        {% for option in answer_data.selected_options %}
+                        <div class="mt-1">{{ option.option_text }}</div>
+                        {% empty %}
+                        <div class="text-muted mt-1">No answer selected</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-3">
+                        <strong>Correct Answer:</strong>
+                        {% for option in answer_data.correct_options %}
+                        <div class="text-success mt-1">{{ option.option_text }}</div>
+                        {% endfor %}
+                    </div>
                     {% else %}
-                        <div class="mb-3">
-                            <strong>Your Answer:</strong>
-                            <div class="alert alert-dark p-3 border rounded mt-2">
-                                {{ answer_data.text_answer|default:"No answer provided" }}
-                            </div>
+                    <div class="mb-3">
+                        <strong>Your Answer:</strong>
+                        <div class="alert alert-dark p-3 border rounded mt-2">
+                            {{ answer_data.text_answer|default:"No answer provided" }}
                         </div>
+                    </div>
                     {% endif %}
-                    
+
                     {% if answer_data.question.explanation %}
                     <div class="alert alert-info">
                         <strong>Explanation:</strong><br>

@@ -50,10 +50,11 @@
         lastServerSync: 0,
         focusWarningCount: 0,
         isProcessingWarning: false,
+        isSubmitting: false,
         lastFocusTime: Date.now(),
         // used for deduplication
         lastWarningAt: 0,
-        lastWarningHash: null
+        modalInstance: null
     };
 
     // DOM Elements
@@ -66,7 +67,13 @@
         finalizeBtn: document.getElementById('finalizeBtn'),
         timerEl: document.getElementById('timer'),
         warningBadge: document.getElementById('warningBadge'),
-        warningCountEl: document.getElementById('warningCount')
+        warningCountEl: document.getElementById('warningCount'),
+        // Modal elements
+        warningModalEl: document.getElementById('warningModal'),
+        warningMessage: document.getElementById('warningMessage'),
+        remainingWarnings: document.getElementById('remainingWarnings'),
+        warningFooter: document.getElementById('warningFooter'),
+        ackWarningBtn: document.getElementById('ackWarningBtn')
     };
 
     // Utilities
@@ -97,12 +104,7 @@
         },
 
         // simple hash for reason + timestamp-window to avoid duplicates
-        makeWarningHash: function (reason) {
-            // include page visibility + focus state to reduce hash collision across events
-            const vis = document.hidden ? 'hidden' : 'visible';
-            const focus = document.hasFocus() ? 'focus' : 'nofocus';
-            return reason + '|' + vis + '|' + focus;
-        }
+        // REMOVED: Strict time-based debouncing is now used instead
     };
 
     // Storage
@@ -226,6 +228,17 @@
 
             html += '</div></div>';
             DOM.panel.innerHTML = html;
+        },
+
+        showInfo: function (message) {
+            if (State.modalInstance) {
+                DOM.warningMessage.textContent = message;
+                DOM.warningFooter.classList.add('d-none');
+                DOM.ackWarningBtn.classList.remove('d-none');
+                State.modalInstance.show();
+            } else {
+                alert(message);
+            }
         }
     };
 
@@ -283,6 +296,7 @@
                 return;
             }
 
+            State.isSubmitting = true;
             Questions.saveCurrent().then(function () {
                 Utils.fetchJSON(CONFIG.endpoints.finalize, {
                     method: 'POST',
@@ -304,17 +318,7 @@
             UI.displayTimer();
 
             if (status.remaining_seconds <= 0) {
-                Questions.saveCurrent().then(function () {
-                    Utils.fetchJSON(CONFIG.endpoints.finalize, {
-                        method: 'POST',
-                        headers: { 'X-CSRFToken': Utils.csrf() }
-                    }).then(function (result) {
-                        if (result.redirect_url) {
-                            alert('Time has expired! Your quiz has been automatically submitted.');
-                            window.location = result.redirect_url;
-                        }
-                    });
-                });
+                Timer.handleExpiration();
             }
 
             if (status.completed) {
@@ -325,10 +329,38 @@
             }
         },
 
+        handleExpiration: function () {
+            if (State.isSubmitting) return;
+            State.isSubmitting = true;
+
+            Questions.saveCurrent().then(function () {
+                Utils.fetchJSON(CONFIG.endpoints.finalize, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': Utils.csrf() }
+                }).then(function (result) {
+                    if (result && result.redirect_url) {
+                        if (State.modalInstance) {
+                            DOM.warningMessage.textContent = 'Time has expired! Your quiz has been automatically submitted.';
+                            DOM.warningFooter.classList.add('d-none');
+                            DOM.ackWarningBtn.classList.add('d-none');
+                            State.modalInstance.show();
+                        }
+                        setTimeout(function () {
+                            window.location = result.redirect_url;
+                        }, 2000);
+                    }
+                });
+            });
+        },
+
         tick: function () {
             if (State.remainingSeconds > 0) {
                 State.remainingSeconds--;
                 UI.displayTimer();
+
+                if (State.remainingSeconds <= 0) {
+                    Timer.handleExpiration();
+                }
             }
         },
 
@@ -361,22 +393,22 @@
 
         // centralized warning recorder with dedupe and auto-submit handling
         recordWarning: function (reason) {
+            if (State.isSubmitting) return Promise.resolve();
+
             if (!CONFIG.security.monitorTabSwitching && !CONFIG.security.enableFullscreen) {
                 return Promise.resolve(); // warnings disabled
             }
 
             const now = Date.now();
-            const hash = Utils.makeWarningHash(reason);
 
-            // If same hash within debounce window, ignore
-            if (hash === State.lastWarningHash && (now - State.lastWarningAt) < WARNING_DEBOUNCE_MS) {
-                console.log("Ignored duplicate warning:", reason);
+            // Strict debouncing: Ignore ANY warning if within debounce window of the last one
+            if ((now - State.lastWarningAt) < WARNING_DEBOUNCE_MS) {
+                console.log("Ignored duplicate warning (debounce):", reason);
                 return Promise.resolve();
             }
 
             // Update dedupe trackers
             State.lastWarningAt = now;
-            State.lastWarningHash = hash;
 
             State.focusWarningCount++;
             Storage.saveWarnings();
@@ -387,12 +419,20 @@
             // If maxTabSwitches is <= 0 treat as unlimited (no auto-submit)
             if (CONFIG.security.maxTabSwitches > 0 && State.focusWarningCount >= CONFIG.security.maxTabSwitches) {
                 // reached or exceeded limit
-                const message = 'Warning #' + State.focusWarningCount + '\n\n' +
-                    'You have reached the maximum number of warnings.';
+                const message = 'You have reached the maximum number of warnings.';
 
                 if (CONFIG.security.autoSubmitOnViolations) {
                     // auto-submit
-                    alert(message + '\nYour quiz will be automatically submitted now.');
+                    State.isSubmitting = true;
+
+                    // Show modal for auto-submit
+                    if (State.modalInstance) {
+                        DOM.warningMessage.textContent = message + " Your quiz is being submitted automatically.";
+                        DOM.warningFooter.classList.add('d-none'); // Hide remaining count
+                        DOM.ackWarningBtn.classList.add('d-none'); // Hide ack button
+                        State.modalInstance.show();
+                    }
+
                     return Questions.saveCurrent().then(function () {
                         return Utils.fetchJSON(CONFIG.endpoints.finalize, {
                             method: 'POST',
@@ -408,17 +448,26 @@
                     });
                 } else {
                     // just warn user, do not auto-submit
-                    alert(message + '\nNo automatic submission is configured.');
+                    // Show modal
+                    if (State.modalInstance) {
+                        DOM.warningMessage.textContent = message + " No automatic submission is configured.";
+                        DOM.remainingWarnings.textContent = "0";
+                        DOM.warningFooter.classList.remove('d-none');
+                        DOM.ackWarningBtn.classList.remove('d-none');
+                        State.modalInstance.show();
+                    }
                     return Promise.resolve();
                 }
             } else {
-                // normal warning — show single alert and re-enter fullscreen if needed
+                // normal warning — show modal
                 const remaining = CONFIG.security.maxTabSwitches > 0 ? (CONFIG.security.maxTabSwitches - State.focusWarningCount) : '∞';
-                alert('Warning #' + State.focusWarningCount + '\n\n' + reason + '\n\n' + 'Remaining warnings: ' + remaining);
 
-                if (CONFIG.security.enableFullscreen) {
-                    // attempt to re-enter fullscreen (will silently fail if blocked)
-                    Security.enterFullscreen();
+                if (State.modalInstance) {
+                    DOM.warningMessage.textContent = reason;
+                    DOM.remainingWarnings.textContent = remaining;
+                    DOM.warningFooter.classList.remove('d-none');
+                    DOM.ackWarningBtn.classList.remove('d-none');
+                    State.modalInstance.show();
                 }
 
                 return Promise.resolve();
@@ -515,7 +564,7 @@
                 console.log("Right-click disabled");
                 document.addEventListener('contextmenu', function (e) {
                     e.preventDefault();
-                    alert('Right-click is disabled during the quiz.');
+                    UI.showInfo('Right-click is disabled during the quiz.');
                     return false;
                 });
             }
@@ -525,15 +574,15 @@
                 console.log("Copy/paste disabled");
                 document.addEventListener('copy', function (e) {
                     e.preventDefault();
-                    alert('Copying is disabled during the quiz.');
+                    UI.showInfo('Copying is disabled during the quiz.');
                 });
                 document.addEventListener('paste', function (e) {
                     e.preventDefault();
-                    alert('Pasting is disabled during the quiz.');
+                    UI.showInfo('Pasting is disabled during the quiz.');
                 });
                 document.addEventListener('cut', function (e) {
                     e.preventDefault();
-                    alert('Cutting is disabled during the quiz.');
+                    UI.showInfo('Cutting is disabled during the quiz.');
                 });
             }
 
@@ -541,6 +590,7 @@
             if (CONFIG.security.preventBrowserBack) {
                 console.log("Browser back prevented");
                 window.addEventListener('beforeunload', function (e) {
+                    if (State.isSubmitting) return;
                     e.preventDefault();
                     e.returnValue = 'Are you sure you want to leave?';
                     return 'Are you sure you want to leave?';
@@ -554,7 +604,7 @@
                     (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) ||
                     (e.ctrlKey && e.keyCode === 85)) {
                     e.preventDefault();
-                    alert('This action is not allowed during the quiz.');
+                    UI.showInfo('This action is not allowed during the quiz.');
                 }
             });
         }
@@ -624,6 +674,18 @@
                 DOM.finalizeBtn.addEventListener('click', Questions.finalize);
             }
 
+            // Modal button
+            if (DOM.ackWarningBtn) {
+                DOM.ackWarningBtn.addEventListener('click', function () {
+                    if (State.modalInstance) {
+                        State.modalInstance.hide();
+                    }
+                    if (CONFIG.security.enableFullscreen) {
+                        Security.enterFullscreen();
+                    }
+                });
+            }
+
             document.addEventListener('change', function (e) {
                 if (e.target && e.target.classList && e.target.classList.contains('answer-opt')) {
                     UI.updateNav();
@@ -633,6 +695,12 @@
 
         init: function () {
             console.log("Initializing quiz app...");
+
+            // Init Bootstrap Modal
+            if (DOM.warningModalEl && window.bootstrap) {
+                State.modalInstance = new bootstrap.Modal(DOM.warningModalEl);
+            }
+
             Storage.loadWarnings();
             Timer.startSync();
             App.setupQuestionNav();

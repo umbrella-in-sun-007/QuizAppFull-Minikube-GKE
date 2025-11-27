@@ -131,6 +131,27 @@
     </div>
   </div>
 </div>
+</div>
+
+<!-- Warning Modal -->
+<div class="modal fade" id="warningModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+  aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title">⚠️ Warning</h5>
+      </div>
+      <div class="modal-body">
+        <p id="warningMessage" class="fs-5"></p>
+        <p class="text-muted small mb-0" id="warningFooter">Remaining warnings: <span id="remainingWarnings"
+            class="fw-bold"></span></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary w-100" id="ackWarningBtn">I Understand & Resume Quiz</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script src="{% static 'quiz/js/take_quiz.js' %}"></script>
 {% endblock %}

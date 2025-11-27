@@ -151,6 +151,13 @@ class Quiz(Page):
     def __str__(self):
         return self.title
 
+    def serve(self, request):
+        """
+        Override the serve method to redirect to the custom quiz detail view
+        """
+        from django.shortcuts import redirect
+        return redirect('quiz_detail', quiz_id=self.id)
+
     def clean(self):
         """Validate quiz fields"""
         super().clean()

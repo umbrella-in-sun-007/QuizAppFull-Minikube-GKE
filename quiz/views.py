@@ -3,12 +3,13 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from django.db.models import Avg, Count, Q
 from .models import Quiz, QuizAttempt, StudentAnswer, Question, AnswerOption
 from .forms import StudentRegistrationForm, TeacherRegistrationForm, LoginForm
 import random
+import csv
 from django.views.decorators.http import require_POST, require_GET
 from django.forms.models import model_to_dict
 from django.db import transaction
@@ -625,7 +626,8 @@ def quiz_analytics(request, quiz_id):
     # Get best attempt per student (for unique student analysis)
     from django.db.models import Max
     best_attempts_per_student = []
-    student_ids = attempts.values_list('student_id', flat=True).distinct()
+    # Use set to ensure unique student IDs, avoiding duplicates from default ordering
+    student_ids = set(attempts.values_list('student_id', flat=True))
     
     for student_id in student_ids:
         student_attempts = attempts.filter(student_id=student_id)
@@ -633,8 +635,8 @@ def quiz_analytics(request, quiz_id):
         if best_attempt:
             best_attempts_per_student.append(best_attempt)
     
-    # Sort by percentage for ranking
-    best_attempts_per_student.sort(key=lambda x: (-x.percentage, x.end_time - x.start_time))
+    # Sort by percentage for ranking (Higher percentage first, then earlier submission time)
+    best_attempts_per_student.sort(key=lambda x: (-x.percentage, x.end_time))
     
     # Top Performer (Highest Score)
     topper = best_attempts_per_student[0] if best_attempts_per_student else None
@@ -721,21 +723,27 @@ def quiz_analytics(request, quiz_id):
     for student_id in student_ids:
         student_attempts = attempts.filter(student_id=student_id)
         student = student_attempts.first().student
-        best_attempt = student_attempts.order_by('-percentage').first()
+        # Get best attempt based on percentage (desc) and then end_time (asc)
+        # Note: We can't easily sort by two fields in different directions in one ORM call if we want strict control
+        # So we fetch all and sort in python or use multiple order_by
+        # For finding the "best" attempt for a student, usually it's just max score. 
+        # If scores are tied, the one with earlier completion is "better".
+        best_attempt = student_attempts.order_by('-percentage', 'end_time').first()
         latest_attempt = student_attempts.order_by('-start_time').first()
         
         student_performance.append({
             'student': student,
             'total_attempts': student_attempts.count(),
             'best_score': best_attempt.percentage,
+            'best_attempt_end_time': best_attempt.end_time,
             'latest_score': latest_attempt.percentage,
             'avg_score': student_attempts.aggregate(Avg('percentage'))['percentage__avg'],
             'passed': best_attempt.is_passed,
             'improvement': latest_attempt.percentage - student_attempts.order_by('start_time').first().percentage if student_attempts.count() > 1 else 0
         })
     
-    # Sort by best score
-    student_performance.sort(key=lambda x: -x['best_score'])
+    # Sort by best score (desc) and then best attempt end time (asc)
+    student_performance.sort(key=lambda x: (-x['best_score'], x['best_attempt_end_time']))
     
     # Recent attempts
     recent_attempts = attempts.order_by('-start_time')[:20]
@@ -767,4 +775,45 @@ def quiz_analytics(request, quiz_id):
         'recent_attempts': recent_attempts,
     }
     return render(request, 'quiz/analytics.html', context)
+
+
+@login_required
+def export_quiz_analytics(request, quiz_id):
+    """Export quiz analytics to CSV/Excel"""
+    if not request.user.is_staff:
+        messages.error(request, 'You do not have permission to perform this action.')
+        return redirect('quiz_list')
+    
+    quiz = get_object_or_404(Quiz, id=quiz_id)
+    
+    # Check permissions (same as analytics)
+    if not request.user.is_superuser and not quiz.is_owner(request.user):
+        messages.error(request, 'You can only export analytics for quizzes you created.')
+        return redirect('quiz_list')
+    
+    # Create the HttpResponse object with the appropriate CSV header.
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{quiz.title}_analytics.csv"'
+    
+    writer = csv.writer(response)
+    # Header row
+    writer.writerow(['Student Email', 'Student Name', 'Score', 'Total Marks', 'Percentage', 'Status', 'Date Time'])
+    
+    # Get completed attempts
+    attempts = QuizAttempt.objects.filter(quiz=quiz, is_completed=True).select_related('student').order_by('-start_time')
+    
+    total_marks = quiz.get_total_marks()
+    
+    for attempt in attempts:
+        writer.writerow([
+            attempt.student.email,
+            attempt.student.get_full_name() or attempt.student.username,
+            attempt.score,
+            total_marks,
+            f"{attempt.percentage}%",
+            "Passed" if attempt.is_passed else "Failed",
+            attempt.end_time.strftime("%Y-%m-%d %H:%M:%S") if attempt.end_time else "N/A"
+        ])
+        
+    return response
 

@@ -21,4 +21,5 @@ urlpatterns = [
     path('attempt/<int:attempt_id>/api/question/<int:question_id>/answer/', views.api_save_answer, name='api_save_answer'),
     path('attempt/<int:attempt_id>/api/finalize/', views.api_finalize_attempt, name='api_finalize_attempt'),
     path('<int:quiz_id>/analytics/', views.quiz_analytics, name='quiz_analytics'),
+    path('<int:quiz_id>/analytics/export/', views.export_quiz_analytics, name='export_quiz_analytics'),
 ]
