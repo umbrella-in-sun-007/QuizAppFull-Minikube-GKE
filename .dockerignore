@@ -8,7 +8,10 @@ __pycache__
 *.pyc
 .DS_Store
 *.swp
-/venv/
+.git
+.gitignore
+.venv/
+venv/
 /tmp/
 /.vagrant/
 /Vagrantfile.local
