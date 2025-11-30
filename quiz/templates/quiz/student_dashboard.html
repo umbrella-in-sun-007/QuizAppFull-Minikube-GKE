@@ -3,7 +3,7 @@
 {% block content %}
 <div class="container my-4">
     <h1 class="mb-4">My Dashboard</h1>
-    
+
     <div class="row g-4 mb-4">
         <div class="col-lg-3 col-md-6">
             <div class="card text-center h-100">
@@ -38,7 +38,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="card mb-4">
         <div class="card-header">
             <h5 class="mb-0">Recent Attempts</h5>
@@ -61,14 +61,25 @@
                         <tr>
                             <td>{{ attempt.quiz.title }}</td>
                             <td>{{ attempt.start_time|date:"M d, Y" }}</td>
-                            <td>{{ attempt.score }} / {{ attempt.quiz.get_total_marks }}</td>
                             <td>
+                                {% if attempt.quiz.show_results_immediately %}
+                                {{ attempt.score }} / {{ attempt.quiz.get_total_marks }}
+                                {% else %}
+                                <span class="text-muted">Hidden</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if attempt.quiz.show_results_immediately %}
                                 <span class="badge {% if attempt.is_passed %}bg-success{% else %}bg-danger{% endif %}">
                                     {{ attempt.percentage|floatformat:1 }}%
                                 </span>
+                                {% else %}
+                                <span class="badge bg-secondary">Hidden</span>
+                                {% endif %}
                             </td>
                             <td>
-                                <a href="{% url 'quiz_result' attempt.id %}" class="btn btn-outline-primary btn-sm">View</a>
+                                <a href="{% url 'quiz_result' attempt.id %}"
+                                    class="btn btn-outline-primary btn-sm">View</a>
                             </td>
                         </tr>
                         {% endfor %}
@@ -76,11 +87,12 @@
                 </table>
             </div>
             {% else %}
-            <p class="text-muted">No attempts yet. <a href="{% url 'quiz_list' %}" class="btn btn-primary btn-sm">Take a quiz</a></p>
+            <p class="text-muted">No attempts yet. <a href="{% url 'quiz_list' %}" class="btn btn-primary btn-sm">Take a
+                    quiz</a></p>
             {% endif %}
         </div>
     </div>
-    
+
     {% if quiz_performance %}
     <div class="card">
         <div class="card-header">
@@ -94,11 +106,14 @@
                         <div class="card-body">
                             <h6 class="card-title">{{ perf.quiz.title }}</h6>
                             <p class="card-text small text-muted">
-                                Attempts: {{ perf.attempts_count }} | 
-                                Best: {{ perf.best_percentage|floatformat:1 }}% | 
+                                Attempts: {{ perf.attempts_count }}
+                                {% if perf.show_results %}
+                                | Best: {{ perf.best_percentage|floatformat:1 }}% |
                                 Avg: {{ perf.avg_percentage|floatformat:1 }}%
+                                {% endif %}
                             </p>
-                            <a href="{% url 'quiz_detail' perf.quiz.id %}" class="btn btn-outline-primary btn-sm">View Quiz</a>
+                            <a href="{% url 'quiz_detail' perf.quiz.id %}" class="btn btn-outline-primary btn-sm">View
+                                Quiz</a>
                         </div>
                     </div>
                 </div>

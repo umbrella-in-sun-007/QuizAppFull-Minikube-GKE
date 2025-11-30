@@ -17,16 +17,16 @@
             <div class="card-text">{{ quiz.description|safe }}</div>
         </div>
     </div>
-    
+
     {% if messages %}
-        {% for message in messages %}
-        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        {% endfor %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
     {% endif %}
-    
+
     <div class="card mb-4">
         <div class="card-header">
             <h5 class="mb-0">Quiz Information</h5>
@@ -35,23 +35,38 @@
             <div class="table-responsive">
                 <table class="table table-striped">
                     <tbody>
-                        <tr><td><strong>Duration</strong></td><td>{{ quiz.duration_minutes }} min</td></tr>
-                        <tr><td><strong>Questions</strong></td><td>{{ quiz.questions.count }}</td></tr>
-                        <tr><td><strong>Total Marks</strong></td><td>{{ total_marks }}</td></tr>
-                        <tr><td><strong>Pass Mark</strong></td><td>{{ quiz.pass_percentage }}%</td></tr>
-                        <tr><td><strong>Your Attempts</strong></td><td>{{ attempts.count }}/{{ quiz.max_attempts }}</td></tr>
+                        <tr>
+                            <td><strong>Duration</strong></td>
+                            <td>{{ quiz.duration_minutes }} min</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Questions</strong></td>
+                            <td>{{ quiz.questions.count }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Total Marks</strong></td>
+                            <td>{{ total_marks }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Pass Mark</strong></td>
+                            <td>{{ quiz.pass_percentage }}%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Your Attempts</strong></td>
+                            <td>{{ attempts.count }}/{{ quiz.max_attempts }}</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
-            
+
             {% if can_attempt %}
-                <a href="{% url 'start_quiz' quiz.id %}" class="btn btn-success btn-lg">Start Quiz</a>
+            <a href="{% url 'start_quiz' quiz.id %}" class="btn btn-success btn-lg">Start Quiz</a>
             {% else %}
-                <div class="alert alert-danger" role="alert">{{ message }}</div>
+            <div class="alert alert-danger" role="alert">{{ message }}</div>
             {% endif %}
         </div>
     </div>
-    
+
     {% if attempts %}
     <div class="card">
         <div class="card-header">
@@ -61,7 +76,12 @@
             <div class="table-responsive">
                 <table class="table table-striped">
                     <thead>
-                        <tr><th>#</th><th>Date</th><th>Score</th><th>Action</th></tr>
+                        <tr>
+                            <th>#</th>
+                            <th>Date</th>
+                            <th>Score</th>
+                            <th>Action</th>
+                        </tr>
                     </thead>
                     <tbody>
                         {% for attempt in attempts %}
@@ -70,18 +90,23 @@
                             <td>{{ attempt.start_time|date:"M d, Y" }}</td>
                             <td>
                                 {% if attempt.is_completed %}
-                                    <span class="badge {% if attempt.is_passed %}bg-success{% else %}bg-danger{% endif %}">
-                                        {{ attempt.percentage|floatformat:1 }}%
-                                    </span>
+                                {% if quiz.show_results_immediately %}
+                                <span class="badge {% if attempt.is_passed %}bg-success{% else %}bg-danger{% endif %}">
+                                    {{ attempt.percentage|floatformat:1 }}%
+                                </span>
                                 {% else %}
-                                    <span class="badge bg-warning text-dark">In Progress</span>
+                                <span class="badge bg-secondary">Hidden</span>
+                                {% endif %}
+                                {% else %}
+                                <span class="badge bg-warning text-dark">In Progress</span>
                                 {% endif %}
                             </td>
                             <td>
                                 {% if attempt.is_completed %}
-                                    <a href="{% url 'quiz_result' attempt.id %}" class="btn btn-outline-primary btn-sm">View</a>
+                                <a href="{% url 'quiz_result' attempt.id %}"
+                                    class="btn btn-outline-primary btn-sm">View</a>
                                 {% else %}
-                                    <a href="{% url 'take_quiz' attempt.id %}" class="btn btn-primary btn-sm">Continue</a>
+                                <a href="{% url 'take_quiz' attempt.id %}" class="btn btn-primary btn-sm">Continue</a>
                                 {% endif %}
                             </td>
                         </tr>

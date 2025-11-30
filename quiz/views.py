@@ -118,7 +118,6 @@ def quiz_list(request):
             'can_attempt': can_attempt,
             'message': message,
             'attempts_count': attempts.count(),
-            'best_score': best_attempt.percentage if best_attempt else None,
             'last_attempt': attempts.first(),
             'can_view_analytics': can_view_analytics
         })
@@ -333,12 +332,23 @@ def api_attempt_status(request, attempt_id):
     time_elapsed = (timezone.now() - attempt.start_time).total_seconds()
     limit = quiz.duration_minutes * 60
     remaining = max(0, int(limit - time_elapsed))
-    return JsonResponse({
+    data = {
         'completed': attempt.is_completed,
         'remaining_seconds': remaining,
-        'score': float(attempt.score) if attempt.score is not None else None,
-        'percentage': float(attempt.percentage) if attempt.percentage is not None else None,
-    })
+    }
+    
+    if quiz.show_results_immediately:
+        data.update({
+            'score': float(attempt.score) if attempt.score is not None else None,
+            'percentage': float(attempt.percentage) if attempt.percentage is not None else None,
+        })
+    else:
+        data.update({
+            'score': None,
+            'percentage': None,
+        })
+        
+    return JsonResponse(data)
 
 @login_required
 @require_GET
@@ -410,14 +420,28 @@ def api_finalize_attempt(request, attempt_id):
             'redirect_url': redirect('quiz_result', attempt_id=attempt.id).url
         })
     result = attempt.calculate_score()
-    return JsonResponse({
+    
+    response_data = {
         'completed': True,
-        'score': float(result['score']),
-        'total': float(result['total']),
-        'percentage': float(result['percentage']),
-        'passed': result['passed'],
         'redirect_url': redirect('quiz_result', attempt_id=attempt.id).url
-    })
+    }
+    
+    if attempt.quiz.show_results_immediately:
+        response_data.update({
+            'score': float(result['score']),
+            'total': float(result['total']),
+            'percentage': float(result['percentage']),
+            'passed': result['passed'],
+        })
+    else:
+        response_data.update({
+            'score': None,
+            'total': None,
+            'percentage': None,
+            'passed': None,
+        })
+        
+    return JsonResponse(response_data)
 
 
 @login_required
@@ -521,20 +545,21 @@ def quiz_result(request, attempt_id):
         messages.warning(request, 'Please complete the quiz first.')
         return redirect('take_quiz', attempt_id=attempt_id)
     
-    # Get all answers with details
+    # Get all answers with details only if results are shown immediately
     answers = []
-    for answer in attempt.answers.all():
-        question = answer.question
-        correct_options = question.options.filter(is_correct=True)
-        selected_options = answer.selected_options.all()
-        
-        answers.append({
-            'question': question,
-            'selected_options': selected_options,
-            'correct_options': correct_options,
-            'is_correct': answer.is_correct,
-            'text_answer': answer.text_answer
-        })
+    if attempt.quiz.show_results_immediately:
+        for answer in attempt.answers.all():
+            question = answer.question
+            correct_options = question.options.filter(is_correct=True)
+            selected_options = answer.selected_options.all()
+            
+            answers.append({
+                'question': question,
+                'selected_options': selected_options,
+                'correct_options': correct_options,
+                'is_correct': answer.is_correct,
+                'text_answer': answer.text_answer
+            })
     
     context = {
         'attempt': attempt,
@@ -554,11 +579,14 @@ def student_dashboard(request):
     attempts = QuizAttempt.objects.filter(student=user, is_completed=True)
     
     # Calculate statistics
-    total_attempts = attempts.count()
-    passed_attempts = attempts.filter(is_passed=True).count()
-    failed_attempts = total_attempts - passed_attempts
+    # Calculate statistics (only for quizzes where results are shown immediately)
+    visible_attempts = attempts.filter(quiz__show_results_immediately=True)
     
-    avg_percentage = attempts.aggregate(Avg('percentage'))['percentage__avg'] or 0
+    total_attempts = attempts.count() # Total count includes all
+    passed_attempts = visible_attempts.filter(is_passed=True).count()
+    failed_attempts = visible_attempts.count() - passed_attempts
+    
+    avg_percentage = visible_attempts.aggregate(Avg('percentage'))['percentage__avg'] or 0
     
     # Recent attempts
     recent_attempts = attempts.order_by('-start_time')[:10]
@@ -569,13 +597,21 @@ def student_dashboard(request):
     
     for quiz in quizzes:
         quiz_attempts = attempts.filter(quiz=quiz)
-        best_attempt = quiz_attempts.order_by('-percentage').first()
+        
+        if quiz.show_results_immediately:
+            best_attempt = quiz_attempts.order_by('-percentage').first()
+            avg_pct = quiz_attempts.aggregate(Avg('percentage'))['percentage__avg']
+            best_pct = best_attempt.percentage if best_attempt else 0
+        else:
+            avg_pct = None
+            best_pct = None
         
         quiz_performance.append({
             'quiz': quiz,
             'attempts_count': quiz_attempts.count(),
-            'best_percentage': best_attempt.percentage,
-            'avg_percentage': quiz_attempts.aggregate(Avg('percentage'))['percentage__avg']
+            'best_percentage': best_pct,
+            'avg_percentage': avg_pct,
+            'show_results': quiz.show_results_immediately
         })
     
     context = {
