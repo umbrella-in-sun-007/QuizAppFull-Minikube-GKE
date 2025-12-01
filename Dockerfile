@@ -48,17 +48,5 @@ USER wagtail
 # Collect static files.
 RUN python manage.py collectstatic --noinput --clear
 
-# Runtime command that executes when "docker run" is called, it does the
-# following:
-#   1. Migrate the database.
-#   2. Start the application server.
-# WARNING:
-#   Migrating database at the same time as starting the server IS NOT THE BEST
-#   PRACTICE. The database should be migrated manually or using the release
-#   phase facilities of your hosting platform. This is used only so the
-#   Wagtail instance can be started with a simple "docker run" command.
-# Healthcheck to ensure the server is running
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/ || exit 1
-
-CMD set -xe; python manage.py migrate --noinput; gunicorn -c gunicorn.conf.py quizapp.wsgi:application
+# Start the application using Gunicorn
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "quizapp.wsgi:application"]

@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: quizapp-config
+data:
+  DJANGO_SETTINGS_MODULE: "quizapp.settings.production"
+  DJANGO_ALLOWED_HOSTS: "*"
+  PORT: "8000"

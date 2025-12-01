@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: quizapp-migration
+spec:
+  template:
+    spec:
+      containers:
+      - name: migration
+        image: quizapp:latest
+        imagePullPolicy: Never
+        command: ["python", "manage.py", "migrate", "--noinput"]
+        envFrom:
+        - configMapRef:
+            name: quizapp-config
+        - secretRef:
+            name: quizapp-secret
+      restartPolicy: Never
+  backoffLimit: 4
