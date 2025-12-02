@@ -20,6 +20,17 @@ ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "*").split(",")
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 if "DATABASE_URL" in os.environ:
     DATABASES["default"] = dj_database_url.config(conn_max_age=600)
+elif "DB_HOST" in os.environ:
+    # GKE deployment with individual environment variables
+    DATABASES["default"] = {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME", "prod"),
+        "USER": os.getenv("DB_USER", "prod_user"),
+        "PASSWORD": os.getenv("DB_PASSWORD"),
+        "HOST": os.getenv("DB_HOST", "127.0.0.1"),
+        "PORT": os.getenv("DB_PORT", "5432"),
+        "CONN_MAX_AGE": 600,
+    }
 
 try:
     from .local import *

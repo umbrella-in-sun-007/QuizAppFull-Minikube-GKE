@@ -2,8 +2,12 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: quizapp
+  namespace: production
+  labels:
+    app: quizapp
+    environment: production
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: quizapp
@@ -11,27 +15,135 @@ spec:
     metadata:
       labels:
         app: quizapp
+        environment: production
     spec:
+      serviceAccountName: quizapp-ksa
       containers:
-      - name: quizapp
-        image: quizapp:latest
-        imagePullPolicy: Never
+      # Main application container
+      - name: web
+        image: gcr.io/data-rainfall-476920-v0/quizapp:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8000
-        envFrom:
-        - configMapRef:
-            name: quizapp-config
-        - secretRef:
-            name: quizapp-secret
+          name: http
+          protocol: TCP
+        env:
+        - name: DJANGO_SETTINGS_MODULE
+          value: "quizapp.settings.production"
+        - name: DJANGO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: quizapp-secrets
+              key: django-secret-key
+        - name: DJANGO_ALLOWED_HOSTS
+          value: "*"  # Update with actual domain later
+        - name: DB_NAME
+          value: "prod"
+        - name: DB_USER
+          value: "prod_user"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: quizapp-secrets
+              key: db-password
+        - name: DB_HOST
+          value: "127.0.0.1"
+        - name: DB_PORT
+          value: "5432"
+        - name: PORT
+          value: "8000"
+        resources:
+          requests:
+            cpu: 250m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
         livenessProbe:
           httpGet:
-            path: /
+            path: /admin/login/
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /admin/login/
             port: 8000
           initialDelaySeconds: 30
           periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 8000
-          initialDelaySeconds: 10
-          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 3
+      
+      # Cloud SQL Proxy sidecar
+      - name: cloud-sql-proxy
+        image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.8.0
+        args:
+          - "--structured-logs"
+          - "--port=5432"
+          - "data-rainfall-476920-v0:us-central1:quizapp-postgres-prod"
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: quizapp-service
+  namespace: production
+  labels:
+    app: quizapp
+spec:
+  type: ClusterIP
+  selector:
+    app: quizapp
+  ports:
+  - port: 80
+    targetPort: 8000
+    protocol: TCP
+    name: http
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: quizapp-hpa
+  namespace: production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: quizapp
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: quizapp-pdb
+  namespace: production
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: quizapp
