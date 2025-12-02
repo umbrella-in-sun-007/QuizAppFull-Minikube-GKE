@@ -20,6 +20,7 @@ Detailed documentation is available in the `docs/` directory:
 
 - **Reference**:
     - [Cloud SQL Quick Reference](docs/CLOUD_SQL_QUICK_REFERENCE.md)
+    - [Backup & Download Guide](docs/CLOUD_SQL_BACKUP_DOWNLOAD.md)
     - [Tasks & TODOs](docs/tasks.md)
 
 ## Success Story

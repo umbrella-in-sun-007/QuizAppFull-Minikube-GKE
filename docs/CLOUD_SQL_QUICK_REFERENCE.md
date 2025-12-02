@@ -104,6 +104,9 @@ gcloud sql backups create --instance=quizapp-postgres-prod
 
 # List backups
 gcloud sql backups list --instance=quizapp-postgres-prod
+
+# Export and Download Backup
+# See: docs/CLOUD_SQL_BACKUP_DOWNLOAD.md
 ```
 
 ---

@@ -166,3 +166,6 @@ coverage/
 schema*.json
 schema*.yaml
 schema*.ymlgcp-key.json
+
+# SQL Backups
+*.sql
