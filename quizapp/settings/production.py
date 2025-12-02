@@ -10,6 +10,21 @@ DEBUG = False
 # See https://docs.djangoproject.com/en/5.2/ref/contrib/staticfiles/#manifeststaticfilesstorage
 STORAGES["staticfiles"]["BACKEND"] = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
+# Google Cloud Storage for Media
+if "GS_BUCKET_NAME" in os.environ:
+    GS_BUCKET_NAME = os.environ["GS_BUCKET_NAME"]
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
+        "OPTIONS": {
+            "bucket_name": GS_BUCKET_NAME,
+        },
+    }
+    GS_FILE_OVERWRITE = False
+    GS_QUERYSTRING_AUTH = False
+    MEDIA_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/"
+    print(f"✓ Using GCS Bucket '{GS_BUCKET_NAME}' for media")
+
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-production-key-change-me")
 
@@ -36,3 +51,28 @@ try:
     from .local import *
 except ImportError:
     pass
+
+# Secret Manager Integration
+try:
+    from google.cloud import secretmanager
+    import google.auth
+
+    if os.getenv("USE_SECRET_MANAGER"):
+        def get_secret(secret_id):
+            client = secretmanager.SecretManagerServiceClient()
+            _, project_id = google.auth.default()
+            name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
+            response = client.access_secret_version(request={"name": name})
+            return response.payload.data.decode("UTF-8")
+
+        print("✓ Fetching secrets from Secret Manager...")
+        SECRET_KEY = get_secret("quizapp-prod-django-secret-key")
+        db_password = get_secret("quizapp-prod-db-password")
+        
+        if "default" in DATABASES:
+            DATABASES["default"]["PASSWORD"] = db_password
+            
+except ImportError:
+    print("Warning: google-cloud-secret-manager not installed.")
+except Exception as e:
+    print(f"Warning: Failed to fetch secrets from Secret Manager: {e}")

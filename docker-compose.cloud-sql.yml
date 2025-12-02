@@ -12,7 +12,9 @@ services:
       - quizapp-network
 
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     ports:
       - "8000:8000"
     volumes:
@@ -28,6 +30,9 @@ services:
       - DB_HOST=cloud-sql-proxy
       - DB_PORT=${DB_PORT:-5432}
       - USE_CLOUD_SQL=true
+      - USE_SECRET_MANAGER=true
+      - GS_BUCKET_NAME=${GS_BUCKET_NAME}
+      - GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-auth/key.json
     depends_on:
       - cloud-sql-proxy
     restart: unless-stopped
