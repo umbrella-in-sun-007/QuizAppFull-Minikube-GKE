@@ -4,10 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.cloud-sql-proxy
-    command:
-      - "/cloud-sql-proxy"
-      - "${CONNECTION_NAME}"
-      - "--port=5432"
+    command: "/cloud-sql-proxy --structured-logs --port=5432 --address=0.0.0.0 ${CONNECTION_NAME}"
     ports:
       - "5432:5432"
     restart: unless-stopped
@@ -25,11 +22,11 @@ services:
       - DJANGO_SETTINGS_MODULE=quizapp.settings.dev
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-dev-secret-key-change-me}
       - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
-      - DB_NAME=dev
-      - DB_USER=dev_user
+      - DB_NAME=${DB_NAME:-dev}
+      - DB_USER=${DB_USER:-dev_user}
       - DB_PASSWORD=${DEV_DB_PASSWORD}
       - DB_HOST=cloud-sql-proxy
-      - DB_PORT=5432
+      - DB_PORT=${DB_PORT:-5432}
       - USE_CLOUD_SQL=true
     depends_on:
       - cloud-sql-proxy
