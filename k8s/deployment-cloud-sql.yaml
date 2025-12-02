@@ -1,0 +1,139 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quizapp
+  labels:
+    app: quizapp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: quizapp
+  template:
+    metadata:
+      labels:
+        app: quizapp
+    spec:
+      serviceAccountName: quizapp-ksa
+      containers:
+      # Main application container
+      - name: web
+        image: gcr.io/YOUR_PROJECT_ID/quizapp:latest
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: DJANGO_SETTINGS_MODULE
+          value: "quizapp.settings.production"
+        - name: DJANGO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: quizapp-django
+              key: secret-key
+        - name: DJANGO_ALLOWED_HOSTS
+          value: "*"  # Update with your actual domain
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              name: quizapp-prod-db
+              key: database
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: quizapp-prod-db
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: quizapp-prod-db
+              key: password
+        - name: DB_HOST
+          value: "127.0.0.1"
+        - name: DB_PORT
+          value: "5432"
+        - name: USE_CLOUD_SQL
+          value: "true"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      
+      # Cloud SQL Proxy sidecar
+      - name: cloud-sql-proxy
+        image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.8.0
+        args:
+          - "--structured-logs"
+          - "--port=5432"
+          - "$(CONNECTION_NAME)"
+        env:
+        - name: CONNECTION_NAME
+          valueFrom:
+            secretKeyRef:
+              name: quizapp-prod-db
+              key: connection-name
+        securityContext:
+          runAsNonRoot: true
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: quizapp-service
+  labels:
+    app: quizapp
+spec:
+  type: LoadBalancer
+  selector:
+    app: quizapp
+  ports:
+  - port: 80
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  sessionAffinity: ClientIP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: quizapp-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: quizapp
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80

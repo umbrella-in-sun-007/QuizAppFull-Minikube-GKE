@@ -1,0 +1,7 @@
+FROM gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.8.0
+
+# Copy the service account key to /tmp which is writable
+COPY --chmod=666 gcp-key.json /tmp/gcp-key.json
+
+# Set environment variable for the key
+ENV GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json

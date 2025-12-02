@@ -165,4 +165,4 @@ coverage/
 # Generated API schema
 schema*.json
 schema*.yaml
-schema*.yml
+schema*.ymlgcp-key.json

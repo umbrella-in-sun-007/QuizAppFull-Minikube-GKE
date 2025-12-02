@@ -1,0 +1,48 @@
+services:
+  # Cloud SQL Proxy sidecar - connects to GCP Cloud SQL
+  cloud-sql-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.cloud-sql-proxy
+    command:
+      - "/cloud-sql-proxy"
+      - "${CONNECTION_NAME}"
+      - "--port=5432"
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - quizapp-network
+
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - media:/app/media
+      - static:/app/static
+    environment:
+      - DJANGO_SETTINGS_MODULE=quizapp.settings.dev
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-dev-secret-key-change-me}
+      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+      - DB_NAME=dev
+      - DB_USER=dev_user
+      - DB_PASSWORD=${DEV_DB_PASSWORD}
+      - DB_HOST=cloud-sql-proxy
+      - DB_PORT=5432
+      - USE_CLOUD_SQL=true
+    depends_on:
+      - cloud-sql-proxy
+    restart: unless-stopped
+    networks:
+      - quizapp-network
+    command: python manage.py runserver 0.0.0.0:8000
+
+volumes:
+  media:
+  static:
+
+
+networks:
+  quizapp-network:
+    driver: bridge
