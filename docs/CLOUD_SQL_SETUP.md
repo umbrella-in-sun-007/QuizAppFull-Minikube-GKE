@@ -1,5 +1,25 @@
 # Quick Start Guide - Shared Cloud SQL Setup
 
+## 📑 Navigation
+- [← Back to Main README](../README.md)
+- [Cloud SQL Quick Reference](CLOUD_SQL_QUICK_REFERENCE.md)
+- [GCP Infrastructure Guide](gcp.md)
+- [GKE Deployment Guide](GKE_DEPLOYMENT_README.md)
+- [Backup & Download Guide](CLOUD_SQL_BACKUP_DOWNLOAD.md)
+
+## Table of Contents
+1. [Architecture](#architecture)
+2. [Prerequisites](#prerequisites)
+3. [Create Cloud SQL Instance](#step-1-create-cloud-sql-instance-10-minutes)
+4. [Create Databases & Users](#step-2-create-databases--users)
+5. [Local Development Setup](#step-3-set-up-local-development)
+6. [GKE Deployment](#step-4-deploy-to-gke-optional)
+7. [Common Commands](#common-commands)
+8. [Troubleshooting](#troubleshooting)
+9. [Next Steps](#next-steps)
+
+---
+
 This guide shows you how to quickly set up your Wagtail QuizApp with a shared GCP Cloud SQL database for both local development and production.
 
 ## Architecture

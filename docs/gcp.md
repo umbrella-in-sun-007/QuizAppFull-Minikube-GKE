@@ -1,5 +1,25 @@
 # GCP Infrastructure Provisioning Guide
 
+## 📑 Navigation
+- [← Back to Main README](../README.md)
+- [GKE Deployment Guide](GKE_DEPLOYMENT_README.md)
+- [Cloud SQL Setup](CLOUD_SQL_SETUP.md)
+- [Cloud SQL Quick Reference](CLOUD_SQL_QUICK_REFERENCE.md)
+- [GCS Media Setup](GCS_MEDIA_SETUP.md)
+- [Project Status](PROJECT_STATUS.md)
+
+## Table of Contents
+1. [Prerequisites](#prerequisites)
+2. [Enable Required APIs](#1-enable-required-apis)
+3. [Artifact Registry](#2-artifact-registry-docker-repository)
+4. [Cloud SQL (PostgreSQL)](#3-cloud-sql-postgresql)
+5. [Google Kubernetes Engine (GKE)](#4-google-kubernetes-engine-gke)
+6. [Google Cloud Storage](#5-google-cloud-storage-media-files)
+7. [Service Account (IAM)](#6-service-account-iam)
+8. [Build and Push Image](#7-build-and-push-image)
+
+---
+
 This guide outlines the `gcloud` commands required to set up the infrastructure for the QuizApp on Google Cloud Platform.
 
 ## Prerequisites

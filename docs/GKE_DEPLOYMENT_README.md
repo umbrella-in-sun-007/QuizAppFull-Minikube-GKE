@@ -1,5 +1,21 @@
 # GKE Production Deployment - Quick Reference
 
+## 📑 Navigation
+- [← Back to Main README](../README.md)
+- [GCP Infrastructure Guide](gcp.md)
+- [Kubernetes Guide](k8s.md)
+- [Cloud SQL Setup](CLOUD_SQL_SETUP.md)
+- [Project Status](PROJECT_STATUS.md)
+
+## Table of Contents
+1. [Deployment Status](#-deployment-status-success)
+2. [Access Information](#access-information)
+3. [Key Components](#key-components)
+4. [Common Operations](#common-operations)
+5. [Next Steps](#next-steps)
+
+---
+
 ## ✅ Deployment Status: SUCCESS
 
 **Cluster:** `quizapp-cluster` (us-central1)
