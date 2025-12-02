@@ -1,0 +1,11 @@
+TimeSeries ID,value_log_entry_count_aggregate.mean resource.namespace_name=kube-system,value_log_entry_count_aggregate.mean resource.namespace_name=production,value_log_entry_count_aggregate.mean resource.namespace_name=gmp-system
+resource.namespace_name,kube-system,production,gmp-system
+Tue Dec 02 2025 11:30:00 GMT+0530 (India Standard Time),0.875,2,3.6
+Tue Dec 02 2025 12:00:00 GMT+0530 (India Standard Time),0.3333333333333333,5.571428571428571,0
+Tue Dec 02 2025 12:30:00 GMT+0530 (India Standard Time),undefined,2.7142857142857144,undefined
+Tue Dec 02 2025 13:00:00 GMT+0530 (India Standard Time),0.6363636363636364,1.9230769230769231,1.8888888888888888
+Tue Dec 02 2025 13:30:00 GMT+0530 (India Standard Time),1.75,1.5,0.3333333333333333
+Tue Dec 02 2025 14:30:00 GMT+0530 (India Standard Time),undefined,2.8,5
+Tue Dec 02 2025 15:00:00 GMT+0530 (India Standard Time),undefined,1.2105263157894737,undefined
+Tue Dec 02 2025 15:30:00 GMT+0530 (India Standard Time),1,1.1111111111111112,1.5555555555555556
+Tue Dec 02 2025 16:00:00 GMT+0530 (India Standard Time),1.1666666666666667,0.6,0.3333333333333333

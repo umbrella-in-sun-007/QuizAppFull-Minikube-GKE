@@ -1,0 +1,9 @@
+TimeSeries ID,log_entry_count.cloudsql_database.ALIGN_DELTA.REDUCE_SUM.metric.type="logging.googleapis.com/log_entry_count" resource.type="cloudsql_database" metric.label."severity"=monitoring.regex.full_match("ALERT|ERROR|CRITICAL|EMERGENCY|WARNING") AND resource.labels."database_id"="data-rainfall-476920-v0:quizapp-postgres-prod" AND resource.labels."project_id"="data-rainfall-476920-v0".database_id:data-rainfall-476920-v0:quizapp-postgres-prod.project_id:data-rainfall-476920-v0.severity:ALERT,log_entry_count.cloudsql_database.ALIGN_DELTA.REDUCE_SUM.metric.type="logging.googleapis.com/log_entry_count" resource.type="cloudsql_database" metric.label."severity"=monitoring.regex.full_match("ALERT|ERROR|CRITICAL|EMERGENCY|WARNING") AND resource.labels."database_id"="data-rainfall-476920-v0:quizapp-postgres-prod" AND resource.labels."project_id"="data-rainfall-476920-v0".database_id:data-rainfall-476920-v0:quizapp-postgres-prod.project_id:data-rainfall-476920-v0.severity:ERROR
+severity,ALERT,ERROR
+project_id,data-rainfall-476920-v0,data-rainfall-476920-v0
+database_id,data-rainfall-476920-v0:quizapp-postgres-prod,data-rainfall-476920-v0:quizapp-postgres-prod
+Tue Dec 02 2025 11:30:00 GMT+0530 (India Standard Time),undefined,2
+Tue Dec 02 2025 12:00:00 GMT+0530 (India Standard Time),undefined,39
+Tue Dec 02 2025 12:30:00 GMT+0530 (India Standard Time),1,undefined
+Tue Dec 02 2025 14:30:00 GMT+0530 (India Standard Time),undefined,20
+Tue Dec 02 2025 15:00:00 GMT+0530 (India Standard Time),undefined,12
