@@ -10,7 +10,7 @@
 **Superuser Credentials:**
 - Username: `neerajadhav`
 - Email: `neerajadhav@duck.com`
-- Password: `StU&ilS2706`
+- Password: `my-secure-password`
 
 ---
 
