@@ -1,4 +1,4 @@
-# Cloud SQL Deployment - Quick Reference
+7# Cloud SQL Deployment - Quick Reference
 
 ## ✅ Deployment Complete!
 
@@ -239,9 +239,7 @@ gcloud sql instances patch quizapp-postgres-prod --activation-policy=ALWAYS
 
 ---
 
-## Support Resources
-
-- **Walkthrough:** `/home/super/.gemini/antigravity/brain/.../walkthrough.md`
+## Support 
 - **Full Guide:** `gcp-database-migration-guide.md`
 - **Setup Script:** `continue-setup.sh`
 
